@@ -32,7 +32,7 @@ module.exports = class Roles
       # Now remove all roles with this name
       RolesDatastore.remove { name: name }, { multi: true }, (err) ->
         throw err if err?
-        d.resolve "#{usersAffected} users have been affected by dropping \"#{name}\" and now have no role."
+        d.resolve "#{usersAffected} users have been affected by dropping \"#{name}\" and now have no role"
     d.promise
   ###
   Adds a new role
@@ -46,7 +46,25 @@ module.exports = class Roles
       roleAlreadyExists = name in roles
       return d.reject "Role \"#{name}\" already exists" if roleAlreadyExists
       # Now insert
-      RolesDatastore.insert { name: name }, (err) ->
+      RolesDatastore.insert { name: name, trigger: null }, (err) ->
         throw err if err?
         d.resolve "Role \"#{name}\" was added"
+    d.promise
+  ###
+  Associates a trigger to a role
+  @param    [string]  name  The name of this role
+  @param    [Trigger] trigger The trigger to associate
+  @param    [TriggerManager]  triggerManager  The trigger manager which this trigger belongs to
+  @returns  [promise] A promise to the result
+  ###
+  @associateTrigger: (name, trigger, triggerManager) ->
+    d = Q.defer()
+    d.reject "No such trigger #{trigger.key} in the Trigger Manager provided" if triggerManager.triggers[trigger.key]?
+    # Make sure this role exists
+    Roles.all().then (roles) ->
+      roleExists = name in roles
+      return d.reject "Role with the name #{name} does not exist" unless roleExists
+      RolesDatastore.update { role: name }, { $set: { trigger: trigger.key } }, {}, (err) ->
+        throw err if err?
+        d.resolve "Trigger #{trigger.key} associated with role \"#{role}\""
     d.promise

@@ -6,11 +6,13 @@
   "dependencies": {
     "body-parser": "^1.13.1",
     "coffee-script": "1.7.1",
+    "cron": "^1.0.9",
     "express": "^4.13.0",
     "moment": "^2.10.3",
     "nconf": "0.7.1",
     "nedb": "^1.1.2",
     "q": "1.4.1",
+    "request": "^2.58.0",
     "slack-client": "1.4.1",
     "underscore": "1.7.0"
   },

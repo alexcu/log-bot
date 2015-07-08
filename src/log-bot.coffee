@@ -1,7 +1,10 @@
 SlackClient       = require 'slack-client'
 CommandProcessor  = require './command-processor'
 Users             = require './users'
+TriggerManager    = require './trigger-manager'
 _                 = require 'underscore'
+moment            = require 'moment'
+
 ###
 The log bot class, responsible for human interaction
 ###
@@ -11,30 +14,39 @@ module.exports = class LogBot
   ###
   constructor: (botToken) ->
     # Setup the command processor
-    @_cmdProcessor = new CommandProcessor
-    @_cmdProcessor.on 'commandSuccess', (msg) ->
+    @cmdProcessor = new CommandProcessor
+    @cmdProcessor.on 'commandSuccess', (msg) ->
       console.log "SUCCESS: #{msg}"
-    @_cmdProcessor.on 'commandFailed', (msg) ->
+    @cmdProcessor.on 'commandFailed', (msg) ->
       console.log "FAILED: #{msg}"
+    # Setup the trigger manager
+    @triggerManager = new TriggerManager @
     # Setup the slack client
-    @_slack = new SlackClient botToken, true
+    @slack = new SlackClient botToken, true
     # Login the bot into Slack on creation
-    @_slack.login()
+    @slack.login()
     # Whenever there is a new user to the team, create a new User type for them
-    @_slack.on 'userChange', =>
+    @slack.on 'userChange', =>
       @_updateUsers()
     # Handle slack errors
-    @_slack.on 'error', (err) =>
+    @slack.on 'error', (err) =>
       console.log "An error has occurred : #{JSON.stringify err}"
     # Once initialised, begin listening for messages
-    @_slack.on 'open', =>
-      console.log "#{@_slack.self.name} has connected"
+    @slack.on 'open', =>
+      console.log "#{@slack.self.name} has connected"
       # Update it anyway on creation of the bot to get first-time users
       @_updateUsers()
-      @_slack.on 'message', (message) =>
-        channelId = message.channel
-        isDMToBot = channelId in (id for id, _ of @_slack.dms)
-        @_handleDM message if isDMToBot
+      # Checking for messages
+      @slack.on 'message', (message) =>
+        # Is a DM?
+        @_handleDM(message) if message.getChannelType() is 'DM'
+      # Checking for raw messages
+      @slack.on 'raw_message', (body) =>
+        # Specifically presence changes, where users have become online
+        if body.type is 'presence_change' and body.presence is 'active'
+          # Update the last_online field manually for this user
+          @slack.users[body.user].last_online = moment().unix()
+
   ###
   Updates the team DB store
   ###
@@ -44,7 +56,7 @@ module.exports = class LogBot
       existingUserIds = _.pluck existingUsers, 'id'
       existingUserIds
       # Create each slack user who is not already created as a User type
-      newUsers = _.select @_slack.users, (user) ->
+      newUsers = _.select @slack.users, (user) ->
         isBot = user.is_bot or user.profile.real_name is 'slackbot'
         not (user.id in existingUserIds or isBot)
       # Add in the new user
@@ -54,7 +66,7 @@ module.exports = class LogBot
   Handles a DM
   @param  [object]  message The message to parse
   ###
-  _handleDM: (message) =>
-    # Todo, specifically look for help.
-    # If admin, use CommandProcessor
-    @_cmdProcessor.parse message.text
+  _handleDM: (message, user) =>
+    isAdmin = (@slack.getUserByID message.user).is_admin
+    # Is a DM from an Admin?
+    @cmdProcessor.parse message.text if message.user.profile.is_admin

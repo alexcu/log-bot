@@ -1,5 +1,4 @@
-LogBot     = require './log-bot'
-{botToken} = require './config'
-CommandProcessor  = require './command-processor'
+LogBot      = require './log-bot'
+{botToken}  = require './config'
 
 new LogBot(botToken)

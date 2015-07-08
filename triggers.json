@@ -1,0 +1,50 @@
+{
+  // Defines the number of hours in a working day
+  "workDay": 7.5,
+  // The various triggers
+  "triggers": {
+    // Log by hours
+    "hours": {
+      // Question to prompt when the trigger is invoked
+      "question": "Did you work a full day today?",
+      // Expected possible responses as a RegExp
+      "responses": {
+        // If yes or y, then log 1 workDay's worth of hours hours
+        "yes|y":  "workDay",
+        // If no, ask another question
+        "no|n": {
+          // This question will specifically ask the number of hours to work
+          "question": "How many hours did you work?",
+          // And the expected answers would be
+          "responses": {
+            // E.g. 1.5hrs, 1.5, 3, 1.0h
+            "/(\d+(?:\.\d+)?)(?:hrs|h|hours)/": "$1" // and use their response to log it
+          }
+        }
+      },
+      // Conditions that will trigger the trigger
+      "conditions": {
+        "time": "00 16 * * 1-5",  // Every weekday at 4pm
+        "loggedInToday": true     // User must have logged in at least once during the day
+      }
+    },
+    // Log by project
+    "projects": {
+      "question": "What projects have you worked on this week? (separate multiple with commas)",
+      "responses": {
+        // Only one project the whole week (5 days)
+        "([A-z0-9\_\-\s]+){1}": "5 * workDay",
+        // Multiple projects comma-separated
+        "([A-z0-9\_\-\s]+)(?:,\s*)?": {
+          "question": "Please estimate the days you worked on $1:",
+          "responses": {
+            "(\d+(?:\.\d+)?)(?:days|d)": "$1 * workDay"
+          }
+        }
+      },
+      "conditions": {
+        "time": "00 16 * * 5" // Every Friday at 4pm
+      }
+    }
+  }
+}

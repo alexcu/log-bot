@@ -1,4 +1,4 @@
-Datastore             = require('nedb')
+Datastore             = require 'nedb'
 {datastoreDirectory}  = require './config'
 
 # Each datastore is defined here

@@ -18,17 +18,25 @@ module.exports = class Users
       d.resolve docs
     d.promise
   ###
-  Retrieves the profile for the given user
+  Retrieves the user for the given userId
   @param    [string]  id  Slack user id
-  @returns  [promise] A promise to the profile
+  @returns  [promise] A promise to the user
   ###
   @find: (id) ->
     d = Q.defer()
-    Users.all().then (users) ->
-      userFound = _.find users, (user) ->
-        user.id is id
-      return d.reject unless userFound?
-      d.resolve userFound
+    UsersDatastore.findOne { id: id }, (err, user) ->
+      return d.reject unless user?
+      d.resolve user
+    d.promise
+  ###
+  Retrieves the users with the given role
+  @param    [string]  role  The role
+  @returns  [promise] A promise to the users
+  ###
+  @usersForRole: (role) ->
+    d = Q.defer()
+    UsersDatastore.find { role: role }, (err, users) ->
+      d.resolve users
     d.promise
   ###
   Adds a new user

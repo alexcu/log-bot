@@ -9,8 +9,9 @@ module.exports = class CommandProcessor extends EventEmitter
   RegExp's for the kinds of parameters accepted in the processor
   ###
   PARAMS =
-    USER: /<@([A-Z0-9]+)>/g                   # A slack user
-    ROLE: /(?:(?:["“'‘])([A-Z\_\s]+)(?:["”'’]))/g   # A role (wrapped in quotes)
+    USER: /<@([A-Z0-9]+)>/g                           # A slack user
+    ROLE: /(?:(?:["“'‘])([A-Z\_\s]+)(?:["”'’]))/g     # A role (wrapped in quotes)
+    TRIGGER: /(?:(?:["“'‘])([A-Z\_\s]+)(?:["”'’]))/g  # A trigger (wrapped in quotes)
 
   ###
   Command replacement matches. Plurals must come first such that
@@ -21,24 +22,27 @@ module.exports = class CommandProcessor extends EventEmitter
     '[USER]' : PARAMS.USER
     '[ROLES]': /([ROLE],?\s?)+/
     '[ROLE]' : PARAMS.ROLE
+    '[TRIGGER]': PARAMS.TRIGGER
 
   ###
   Commands mapped to their functions
   Where [USER] is present, a slack user will be matched
   Where [ROLE] is present, a user role will be matched
+  Where [ROLE] is present, a trigger will be matched
   ###
   COMMANDS =
     # Role-based commands
-    'ASSIGN [USER] ROLE [ROLE]' : 'assignUserRole'
-    'ADD ROLE [ROLES]'          : 'addRole'
-    'DROP ROLE [ROLES]'         : 'dropRole'
-    'GET ROLE FOR [USER]'       : 'getRolesForUsers'
-    'GET ROLES FOR [USERS]'     : 'getRolesForUsers'
-    'GET ALL ROLES'             : 'getAllRoles'
+    'ASSIGN [USER] ROLE [ROLE]'       : 'assignUserRole'
+    'ADD ROLE [ROLES]'                : 'addRole'
+    'DROP ROLE [ROLES]'               : 'dropRole'
+    'GET ROLE FOR [USER]'             : 'getRolesForUsers'
+    'GET ROLES FOR [USERS]'           : 'getRolesForUsers'
+    'GET ALL ROLES'                   : 'getAllRoles'
     # Log-based commands
-    'GET LOGS FOR [USERS]'      : 'getLogsForUsers'
-    'GET LOGS'                  : 'getAllLogs'
-
+    'GET LOGS FOR [USERS]'            : 'getLogsForUsers'
+    'GET LOGS'                        : 'getAllLogs'
+    # Triggers
+    'ASSIGN [ROLE] TRIGGER [TRIGGER]' : 'assignRoleTrigger'
   ###
   Assigns the user provided a role
   @param  [object]  args  The command args
@@ -51,6 +55,10 @@ module.exports = class CommandProcessor extends EventEmitter
         @_success success
       .fail (err) =>
         @_fail err
+  ###
+  Adds a new role
+  @param  [object]  args  The command args
+  ###
   __addRole: (args) ->
     roles = args.roles
     while roles.length > 0
@@ -60,6 +68,10 @@ module.exports = class CommandProcessor extends EventEmitter
           @_success success
         .fail (err) =>
           @_fail err
+  ###
+  Drops an existing role
+  @param  [object]  args  The command args
+  ###
   __dropRole: (args) ->
     roles = args.roles
     while roles.length > 0
@@ -69,9 +81,17 @@ module.exports = class CommandProcessor extends EventEmitter
           @_success success
         .fail (err) =>
           @_fail err
+  ###
+  Gets all roles
+  @param  [object]  args  The command args
+  ###
   __getAllRoles: (args) ->
     Roles.all().then (roles) =>
       @_success "Here are all the roles: \"#{roles.join('\", \"')}\""
+  ###
+  Gets the roles for the given users
+  @param  [object]  args  The command args
+  ###
   __getRolesForUsers: (args) ->
     users = args.users
     while users.length > 0
@@ -85,11 +105,30 @@ module.exports = class CommandProcessor extends EventEmitter
             @_success "#{user.profile.real_name} is not yet assigned a role"
         .fail (err) =>
           @_fail err
+  ###
+  Gets the logs for the given users
+  @param  [object]  args  The command args
+  ###
   __getLogsForUsers: (args) ->
     "TODO: Implement __getLogsForUsers\t args = (#{JSON.stringify args})"
+  ###
+  Gets all logs available
+  @param  [object]  args  The command args
+  ###
   __getAllLogs: (args) ->
     "TODO: Implement __getAllLogs\t args = (#{JSON.stringify args})"
-
+  ###
+  Assigns the role the provided trigger
+  @param  [object]  args  The command args
+  ###
+  __assignRoleTrigger: (args) ->
+    triggerKey  = args.trigger[0]
+    role        = args.roles[0]
+    Roles.associateTrigger(role, triggerKey, @_logBot.triggerManager)
+      .then (success) =>
+        @_success success
+      .fail (err) =>
+        @_fail err
   ###
   Generates a Regular Expression for the given command by converting its
   matched replacements with the replacements to match
@@ -170,3 +209,9 @@ module.exports = class CommandProcessor extends EventEmitter
             @_fail e.message
     else
       @_fail "Invalid admin command!"
+
+  ###
+  @param  [LogBot]  logBot  The log bot connected to this command processor
+  ###
+  constructor: (@_logBot) ->
+    return

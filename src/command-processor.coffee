@@ -1,13 +1,16 @@
+Users           = require './users'
+Roles           = require './roles'
+{EventEmitter}  = require 'events'
 ###
 This class is responsible for handling bot admin commands
 ###
-class CommandProcessor
+module.exports = class CommandProcessor extends EventEmitter
   ###
   RegExp's for the kinds of parameters accepted in the processor
   ###
   PARAMS =
-    USER: /<@([A-Z0-9]+)>/g # A slack user
-    ROLE: /[A-Z\_]+/g       # A role
+    USER: /<@([A-Z0-9]+)>/g                   # A slack user
+    ROLE: /(?:(?:["“'‘])([A-Z\_\s]+)(?:["”'’]))/g   # A role (wrapped in quotes)
 
   ###
   Command replacement matches. Plurals must come first such that
@@ -29,23 +32,59 @@ class CommandProcessor
     'ASSIGN [USER] ROLE [ROLE]' : 'assignUserRole'
     'ADD ROLE [ROLES]'          : 'addRole'
     'DROP ROLE [ROLES]'         : 'dropRole'
+    'GET ROLE FOR [USER]'       : 'getRolesForUsers'
     'GET ROLES FOR [USERS]'     : 'getRolesForUsers'
-    'GET ROLES'                 : 'getAllRoles'
+    'GET ALL ROLES'             : 'getAllRoles'
     # Log-based commands
     'GET LOGS FOR [USERS]'      : 'getLogsForUsers'
     'GET LOGS'                  : 'getAllLogs'
 
-  # TODO: Implement the commands
-  __assignUserRole: (args) ->
-    "TODO: Implement __assignUserRole\t args = (#{JSON.stringify args})"
+  ###
+  Assigns the user provided a role
+  @param  [object]  args  The command args
+  ###
+  __assignUserRole: (args) =>
+    userId  = args.users[0]
+    role    = args.roles[0]
+    Users.assignRole(userId, role)
+      .then (success) =>
+        @_success success
+      .fail (err) =>
+        @_fail err
   __addRole: (args) ->
-    "TODO: Implement __addRole\t args = (#{JSON.stringify args})"
+    roles = args.roles
+    while roles.length > 0
+      role = roles.shift()
+      Roles.add(role)
+        .then (success) =>
+          @_success success
+        .fail (err) =>
+          @_fail err
   __dropRole: (args) ->
-    "TODO: Implement __dropRole\t args = (#{JSON.stringify args})"
+    roles = args.roles
+    while roles.length > 0
+      role = roles.shift()
+      Roles.drop(role)
+        .then (success) =>
+          @_success success
+        .fail (err) =>
+          @_fail err
   __getAllRoles: (args) ->
-    "TODO: Implement __getAllRoles\t args = (#{JSON.stringify args})"
+    Roles.all().then (roles) =>
+      @_success "Here are all the roles: \"#{roles.join('\", \"')}\""
   __getRolesForUsers: (args) ->
-    "TODO: Implement __getRolesForUsers\t args = (#{JSON.stringify args})"
+    users = args.users
+    while users.length > 0
+      userId = users.shift()
+      Users.find(userId)
+        .then (user) =>
+          hasRole = user.role?
+          if hasRole
+            @_success "Role for #{user.profile.real_name} is \"#{user.role}\""
+          else
+            @_success "#{user.profile.real_name} is not yet assigned a role"
+        .fail (err) =>
+          @_fail err
   __getLogsForUsers: (args) ->
     "TODO: Implement __getLogsForUsers\t args = (#{JSON.stringify args})"
   __getAllLogs: (args) ->
@@ -66,6 +105,21 @@ class CommandProcessor
     RegExp(command)
 
   ###
+  Emits a command fail message
+  @param  [string]  message Fail message
+  ###
+  _fail: (message) =>
+    @emit 'commandFailed', message
+
+  ###
+  Emits a command success message
+  @param  [string]  message Success message
+  ###
+  _success: (message) =>
+    @emit 'commandSuccess', message
+
+
+  ###
   Checks for a match between the input and the command provided
   @param  [string]  input Input string
   @param  [string]  command Regular Expression command
@@ -83,6 +137,7 @@ class CommandProcessor
   _stripParams: (input) ->
     stripped = {}
     for paramType, regExp of PARAMS
+      paramType = paramType.toLowerCase() + 's'
       while (match = regExp.exec(input))
         value = match[1]
         continue unless value?
@@ -95,7 +150,7 @@ class CommandProcessor
   @returns  [array]  A list of each possible command
   ###
   humanisedCommands: ->
-    (key.toString().slice(1,-1) for key of COMMANDS)
+    (key for key of COMMANDS)
 
   ###
   Parses the input string for a command
@@ -103,12 +158,15 @@ class CommandProcessor
   @returns  [string]  A result string
   ###
   parse: (input) =>
-    input = input.toUpperCase()
-    for command, func of COMMANDS
-      if @_match input, command
-        params = @_stripParams input
-        return @['__' + func](params)
-    "Invalid admin command!"
-
-  # Singleton CommandProcessor
-  module.exports = new CommandProcessor
+    if input?
+      input = input.toUpperCase()
+      for command, func of COMMANDS
+        if @_match input, command
+          params = @_stripParams input
+          try
+            # Execute the command
+            @['__' + func](params)
+          catch e
+            @_fail e.message
+    else
+      @_fail "Invalid admin command!"

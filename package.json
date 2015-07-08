@@ -9,6 +9,7 @@
     "express": "^4.13.0",
     "moment": "^2.10.3",
     "nconf": "0.7.1",
+    "nedb": "^1.1.2",
     "q": "1.4.1",
     "slack-client": "1.4.1",
     "underscore": "1.7.0"

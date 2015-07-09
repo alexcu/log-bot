@@ -4,7 +4,7 @@ Users             = require './users'
 TriggerManager    = require './trigger-manager'
 _                 = require 'underscore'
 moment            = require 'moment'
-EventEmitter      = require 'events'
+{EventEmitter}    = require 'events'
 
 ###
 The log bot class, responsible for human interaction
@@ -13,7 +13,7 @@ module.exports = class LogBot extends EventEmitter
   ###
   This hash means that the bot is awaiting a response from the given user
   ###
-  awaitingResponse: {}
+  _awaitingResponse: {}
 
   ###
   @param  [string]  botToken  The auth token to initialise the bot with
@@ -87,7 +87,7 @@ module.exports = class LogBot extends EventEmitter
     else
       dm.send message
     # I expect a response from this user id
-    @awaitingResponse[userId] = true if expectResponse
+    @_awaitingResponse[userId] = true if expectResponse
 
   ###
   Handles a DM from a given user
@@ -96,14 +96,14 @@ module.exports = class LogBot extends EventEmitter
   ###
   _handleDM: (message, user) =>
     # Is a DM from an Admin and not awaiting a response for that user?
-    if user.is_admin and not @awaitingResponse[user.id]?
+    if user.is_admin and not @_awaitingResponse[user.id]?
       @cmdProcessor.parse message.text
       @emit 'adminCommandReceived', message.text, user
     # Awaiting a response? Emit a DM
-    else if @awaitingResponse[user.id]?
+    else if @_awaitingResponse[user.id]?
       @emit 'dmResponseReceived', message, user
       # We got the response, so delete the awaitingResponse for that user
-      delete @awaitingResponse[user.id]
+      delete @_awaitingResponse[user.id]
     else
       # Not awaiting a response and received a DM? Just emit it
       @emit 'dmReceived', message, user

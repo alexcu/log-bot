@@ -10,12 +10,17 @@ A trigger to invoke a log. A trigger is applied to a particular role.
 ###
 module.exports = class Trigger
   ###
-  Performs the trigger
+  Performs the trigger to the given user
+  @param  [string]  userId  The user id to perform the trigger on
   ###
-  _performTrigger: =>
-    conversation = new Conversation @logBot, @user, @question, @responseActions
-    conversation.on 'answer', (answer) ->
-      # TODO: Log the hours answer!
+  _performTrigger: (userId) =>
+    # Send the question
+    @logBot.sendDM @question, userId
+    # Add a handler for this user on a DM response which is received
+    @logBot.on 'dmResponseReceived', (message, user) =>
+      if user.id is userId
+        console.log "TODO: Received an expected response from user #{user.real_name} => #{message.text}. Parsing..."
+        # TODO: Parse it against responseActions
 
   ###
   @param  [LogBot]  logBot            The log bot connected to this trigger
@@ -42,6 +47,6 @@ module.exports = class Trigger
                   lastOnline = user.last_online
                   lastOnlineToday = moment.unix(lastOnline).isSame(moment(), 'day');
                   # Only perform the trigger if lastOnlineToday
-                  @_performTrigger() if lastOnlineToday
+                  @_performTrigger user.id if lastOnlineToday
               else
-                @_performTrigger()
+                @_performTrigger user.id

@@ -14,10 +14,11 @@ module.exports = class TriggerManager
   @param  [LogBot]  logBot  The log bot that created the trigger manager
   ###
   constructor: (logBot) ->
+    throw Error "No `triggerFile` key specified in `config.json`" unless triggerFile?
     # The constructor for the trigger manager will validate the trigger file on load
     fs.readFile triggerFile, (err, data) =>
       # Couldn't find the file
-      throw err if err?
+      throw Error "Error when loading `trigger.json`: #{err.message}" if err?
       # Read in the JSON, and strip out comments and backslash backslashes
       # to make our users happy :-)
       jsonStr = data.toString().replace(/\/\/([^\n])*/g,'').replace(/\\/g, '\\\\')

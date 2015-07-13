@@ -32,17 +32,37 @@ module.exports = class CommandProcessor extends EventEmitter
   ###
   COMMANDS =
     # Role-based commands
-    'ASSIGN [USER] ROLE [ROLE]'       : 'assignUserRole'
-    'ADD ROLE [ROLES]'                : 'addRole'
-    'DROP ROLE [ROLES]'               : 'dropRole'
-    'GET ROLE FOR [USER]'             : 'getRolesForUsers'
-    'GET ROLES FOR [USERS]'           : 'getRolesForUsers'
-    'GET ALL ROLES'                   : 'getAllRoles'
+    'ASSIGN [USER] ROLE [ROLE]':
+      description:  'Assigns the provided user the given role'
+      func:         'assignUserRole'
+    'ADD ROLE [ROLES]':
+      description:  'Makes me aware of a new role'
+      func:         'addRole'
+    'DROP ROLE [ROLES]':
+      description:  'Drops a role(s) that I currently know of. \
+                     Warning: any user that has this role will be stripped of that role.'
+      func:         'dropRole'
+    'GET ROLE FOR [USERS]':
+      description:  'Gets the role for the given user'
+      func:         'getRolesForUsers'
+    'GET ALL ROLES':
+      description:  'Gets every role that I know about'
+      func:         'getAllRoles'
     # Log-based commands
-    'GET LOGS FOR [USERS]'            : 'getLogsForUsers'
-    'GET LOGS'                        : 'getAllLogs'
+    'GET LOGS FOR [USERS]':
+      description:  'Gets each log for each user provided'
+      func:         'getLogsForUsers'
+    'GET LOGS':
+      description:  'Gets every log that I know about'
+      func:         'getAllLogs'
     # Triggers
-    'ASSIGN [ROLE] TRIGGER [TRIGGER]' : 'assignRoleTrigger'
+    'ASSIGN [ROLE] TRIGGER [TRIGGER]':
+      description:  'Assigns the role provided a new trigger'
+      func:         'assignRoleTrigger'
+    # Help
+    'HELP':
+      description:  'Shows this help menu'
+      func:         'getHelp'
   ###
   Assigns the user provided a role
   @param  [object]  args  The command args
@@ -83,10 +103,11 @@ module.exports = class CommandProcessor extends EventEmitter
           @_fail err
   ###
   Gets all roles
-  @param  [object]  args  The command args
   ###
-  __getAllRoles: (args) ->
+  __getAllRoles: ->
     Roles.all().then (roles) =>
+      if roles.length is 0
+        return @_success "There are no roles I know of"
       @_success "Here are all the roles: \"#{roles.join('\", \"')}\""
   ###
   Gets the roles for the given users
@@ -130,6 +151,15 @@ module.exports = class CommandProcessor extends EventEmitter
       .fail (err) =>
         @_fail err
   ###
+  Gets descriptions for every command
+  ###
+  __getHelp: (args) ->
+    string = "I understand all of these commands...\n"
+    for command, commandData of COMMANDS
+      string += "`#{command}`\n_#{commandData.description}_\n\n"
+    @_success string
+
+  ###
   Generates a Regular Expression for the given command by converting its
   matched replacements with the replacements to match
   @param  [string]  command The input command
@@ -148,15 +178,14 @@ module.exports = class CommandProcessor extends EventEmitter
   @param  [string]  message Fail message
   ###
   _fail: (message) =>
-    @emit 'commandFailed', message
+    @emit 'commandParsed', { message: message, success: false }
 
   ###
   Emits a command success message
   @param  [string]  message Success message
   ###
   _success: (message) =>
-    @emit 'commandSuccess', message
-
+    @emit 'commandParsed', { message: message, success: true }
 
   ###
   Checks for a match between the input and the command provided
@@ -166,7 +195,7 @@ module.exports = class CommandProcessor extends EventEmitter
   ###
   _match: (input, command) =>
     matches = input.match(@_regExpForCommand command)
-    matches? and matches.length > 0
+    matches?.length > 0
 
   ###
   Strips a parameter list out of the command from all possible parameters
@@ -185,29 +214,20 @@ module.exports = class CommandProcessor extends EventEmitter
     stripped
 
   ###
-  Returns a humanised list of available commands
-  @returns  [array]  A list of each possible command
-  ###
-  humanisedCommands: ->
-    (key for key of COMMANDS)
-
-  ###
   Parses the input string for a command
   @param  [string]  input Input string
-  @returns  [string]  A result string
   ###
   parse: (input) =>
     if input?
       input = input.toUpperCase()
-      for command, func of COMMANDS
+      for command, commandData of COMMANDS
         if @_match input, command
           params = @_stripParams input
           try
             # Execute the command
-            @['__' + func](params)
+            return @['__' + commandData.func](params)
           catch e
-            @_fail e.message
-    else
+            return @_fail e.message
       @_fail "Invalid admin command!"
 
   ###

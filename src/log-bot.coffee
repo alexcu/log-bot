@@ -14,17 +14,15 @@ module.exports = class LogBot extends EventEmitter
   This hash means that the bot is awaiting a response from the given user
   ###
   _awaitingResponse: {}
-
+  ###
+  This hash contains each of the command processors for each admin
+  ###
+  _commandProcessors: {}
   ###
   @param  [string]  botToken  The auth token to initialise the bot with
   ###
   constructor: (botToken) ->
-    # Setup the command processor
-    @cmdProcessor = new CommandProcessor
-    @cmdProcessor.on 'commandSuccess', (msg) ->
-      console.log "SUCCESS: #{msg}"
-    @cmdProcessor.on 'commandFailed', (msg) ->
-      console.log "FAILED: #{msg}"
+    @_commandProcessor = new CommandProcessor
     # Setup the trigger manager
     @triggerManager = new TriggerManager @
     # Setup the slack client
@@ -77,8 +75,7 @@ module.exports = class LogBot extends EventEmitter
   @param  [boolean] expectResponse Expect a human response after the DM is sent
   ###
   sendDM: (message, userId, expectResponse = false) =>
-    dm = (dm for id, dm of @slack.dms when userId in dm.members)
-    console.log "Slack DMs are: ", @slack.dms
+    dm = (dm for id, dm of @slack.dms when dm.user is userId)[0]
     # Open a DM if it doesn't yet exist
     unless dm?
       @slack.openDM userId, (dm) ->
@@ -97,7 +94,12 @@ module.exports = class LogBot extends EventEmitter
   _handleDM: (message, user) =>
     # Is a DM from an Admin and not awaiting a response for that user?
     if user.is_admin and not @_awaitingResponse[user.id]?
-      @cmdProcessor.parse message.text
+      # Create a new command processor to handle this
+      @_commandProcessors[user.id] = new CommandProcessor unless @_commandProcessors[user.id]?
+      @_commandProcessors[user.id].once 'commandParsed', (data) =>
+        # Send the response back to the user
+        @sendDM data.message, user.id
+      @_commandProcessors[user.id].parse message.text
       @emit 'adminCommandReceived', message.text, user
     # Awaiting a response? Emit a DM
     else if @_awaitingResponse[user.id]?
@@ -107,6 +109,7 @@ module.exports = class LogBot extends EventEmitter
     else
       # Not awaiting a response and received a DM? Just emit it
       @emit 'dmReceived', message, user
+      @sendDM message, user.id
 
 
 

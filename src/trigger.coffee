@@ -30,7 +30,7 @@ module.exports = class Trigger
   @param  [object]  triggerConditions The conditions which cause this trigger to fire
   ###
   constructor: (@logBot, @key, @question, @responseActions, @triggerConditions) ->
-    new CronJob triggerConditions.time, =>
+    new CronJob '00' + triggerConditions.time, =>
       # Find all applicable roles which this trigger will run for
       Roles.all().then (roles) =>
         applicableRoles = _.select roles, (role) =>

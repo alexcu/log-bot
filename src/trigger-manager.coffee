@@ -51,7 +51,7 @@ module.exports = class TriggerManager
           # Check that we've been given a valid cron time
           if key is 'time'
             try
-              new CronJob value
+              new CronJob '00' + value
             catch e
               throw Error "Invalid cron time for `time` conditional"
           if key is 'loggedInToday'

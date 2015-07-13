@@ -22,7 +22,6 @@ module.exports = class LogBot extends EventEmitter
   @param  [string]  botToken  The auth token to initialise the bot with
   ###
   constructor: (botToken) ->
-    @_commandProcessor = new CommandProcessor
     # Setup the trigger manager
     @triggerManager = new TriggerManager @
     # Setup the slack client
@@ -46,8 +45,8 @@ module.exports = class LogBot extends EventEmitter
     @slack.on 'raw_message', (message) =>
       # Specifically presence changes, where users have become online
       if message.type is 'presence_change' and message.presence is 'active'
-        # Update the last_online field manually for this user
-        @slack.users[message.user].last_online = moment().unix()
+        # Update the users
+        @_updateUsers()
     # Whenever there is a new user to the team, create a new User
     # type for them
     @slack.on 'userChange', =>
@@ -57,6 +56,10 @@ module.exports = class LogBot extends EventEmitter
   Updates the team DB store
   ###
   _updateUsers: =>
+    # Update the last_online of every user to now granted they are currently online
+    _.each @slack.users, (user) ->
+      if user.presence is 'active'
+        user.last_online = moment().unix()
     # Get all users we currently have
     Users.all().then (existingUsers) =>
       existingUserIds = _.pluck existingUsers, 'id'
@@ -79,12 +82,13 @@ module.exports = class LogBot extends EventEmitter
     # Open a DM if it doesn't yet exist
     unless dm?
       @slack.openDM userId, (dm) ->
-        dm = slack.dms[dm.channel.id]
+        dm = @slack.dms[dm.channel.id]
         dm.send message
     else
       dm.send message
     # I expect a response from this user id
-    @_awaitingResponse[userId] = true if expectResponse
+    console.log 'DM sent to user expect response is ', expectResponse
+    @_awaitingResponse[userId] = expectResponse
 
   ###
   Handles a DM from a given user
@@ -95,7 +99,7 @@ module.exports = class LogBot extends EventEmitter
     # Is a DM from an Admin and not awaiting a response for that user?
     if user.is_admin and not @_awaitingResponse[user.id]?
       # Create a new command processor to handle this
-      @_commandProcessors[user.id] = new CommandProcessor unless @_commandProcessors[user.id]?
+      @_commandProcessors[user.id] = new CommandProcessor @ unless @_commandProcessors[user.id]?
       @_commandProcessors[user.id].once 'commandParsed', (data) =>
         # Send the response back to the user
         @sendDM data.message, user.id
@@ -110,7 +114,3 @@ module.exports = class LogBot extends EventEmitter
       # Not awaiting a response and received a DM? Just emit it
       @emit 'dmReceived', message, user
       @sendDM message, user.id
-
-
-
-

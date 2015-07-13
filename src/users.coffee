@@ -55,13 +55,14 @@ module.exports = class Users
   @assignRole: (id, role) ->
     d = Q.defer()
     Users.find(id)
-      .then (user) =>
-        Roles.all().then (roles) ->
+      .then ( (user) =>
+        Roles.names().then (roles) ->
           roleExists = role in roles
           d.reject "No role \"#{role}\" exists. Create it first." unless roleExists
           UsersDatastore.update { id: id }, { $set: { role: role } }, { multi: true }, (err) ->
             throw err if err?
-          d.resolve "Assigned #{role} to #{user.profile.real_name}"
-      .fail () =>
-        d.reject "No user with id #{id} found"
+          d.resolve "Assigned #{role} to #{user.profile.real_name}" ), (
+        =>
+          d.reject "No user with id #{id} found"
+      )
     d.promise

@@ -1,6 +1,8 @@
 Users           = require './users'
 Roles           = require './roles'
 {EventEmitter}  = require 'events'
+_               = require 'underscore'
+
 ###
 This class is responsible for handling bot admin commands
 ###
@@ -59,6 +61,12 @@ module.exports = class CommandProcessor extends EventEmitter
     'ASSIGN [ROLE] TRIGGER [TRIGGER]':
       description:  'Assigns the role provided a new trigger'
       func:         'assignRoleTrigger'
+    'GET ALL TRIGGERS':
+      description:  'Gets every trigger that I know about'
+      func:         'getAllTriggers'
+    'GET TRIGGER FOR [ROLE]':
+      description:  'Gets the trigger associated to the given role'
+      func:         'getTriggerForRole'
     # Help
     'HELP':
       description:  'Shows this help menu'
@@ -71,10 +79,7 @@ module.exports = class CommandProcessor extends EventEmitter
     userId  = args.users[0]
     role    = args.roles[0]
     Users.assignRole(userId, role)
-      .then (success) =>
-        @_success success
-      .fail (err) =>
-        @_fail err
+      .then (success).then ((success) => @_success success), ((err) => @_fail err)
   ###
   Adds a new role
   @param  [object]  args  The command args
@@ -83,11 +88,7 @@ module.exports = class CommandProcessor extends EventEmitter
     roles = args.roles
     while roles.length > 0
       role = roles.shift()
-      Roles.add(role)
-        .then (success) =>
-          @_success success
-        .fail (err) =>
-          @_fail err
+      Roles.add(role).then ((success) => @_success success), ((err) => @_fail err)
   ###
   Drops an existing role
   @param  [object]  args  The command args
@@ -96,16 +97,12 @@ module.exports = class CommandProcessor extends EventEmitter
     roles = args.roles
     while roles.length > 0
       role = roles.shift()
-      Roles.drop(role)
-        .then (success) =>
-          @_success success
-        .fail (err) =>
-          @_fail err
+      Roles.drop(role).then ((success) => @_success success), ((err) => @_fail err)
   ###
   Gets all roles
   ###
   __getAllRoles: ->
-    Roles.all().then (roles) =>
+    Roles.names().then (roles) =>
       if roles.length is 0
         return @_success "There are no roles I know of"
       @_success "Here are all the roles: \"#{roles.join('\", \"')}\""
@@ -118,14 +115,15 @@ module.exports = class CommandProcessor extends EventEmitter
     while users.length > 0
       userId = users.shift()
       Users.find(userId)
-        .then (user) =>
+        .then ((user) =>
           hasRole = user.role?
           if hasRole
             @_success "Role for #{user.profile.real_name} is \"#{user.role}\""
           else
-            @_success "#{user.profile.real_name} is not yet assigned a role"
-        .fail (err) =>
-          @_fail err
+            @_success "#{user.profile.real_name} is not yet assigned a role"),(
+        (err) =>
+          @_fail "No such user found"
+        )
   ###
   Gets the logs for the given users
   @param  [object]  args  The command args
@@ -143,17 +141,37 @@ module.exports = class CommandProcessor extends EventEmitter
   @param  [object]  args  The command args
   ###
   __assignRoleTrigger: (args) ->
-    triggerKey  = args.trigger[0]
+    triggerKey  = args.triggers[1]
     role        = args.roles[0]
     Roles.associateTrigger(role, triggerKey, @_logBot.triggerManager)
-      .then (success) =>
-        @_success success
-      .fail (err) =>
-        @_fail err
+      .then ((success) => @_success success), ((err) => @_fail err)
+  ###
+  Gets the trigger for the given role
+  @param  [object]  args  The command args
+  ###
+  __getTriggerForRole: (args) ->
+    roleName = args.roles[0]
+    Roles.find(roleName)
+      .then ( (role) =>
+        hasTrigger = role.trigger?
+        if hasTrigger
+          @_success "Trigger for \"#{role.name}\" is \"#{role.trigger}\""
+        else
+          @_success "\"#{role.name}\" has no trigger associated to it" ),(
+      (err) =>
+        @_fail "No such role \"#{roleName}\"" )
+  ###
+  Gets all triggers
+  ###
+  __getAllTriggers: ->
+    triggers = (key.toUpperCase() for key of @_logBot.triggerManager.triggers)
+    if triggers.length is 0
+      return @_success "There are no triggers I know of"
+    @_success "Here are all the triggers: \"#{triggers.join('\", \"')}\""
   ###
   Gets descriptions for every command
   ###
-  __getHelp: (args) ->
+  __getHelp: ->
     string = "I understand all of these commands...\n"
     for command, commandData of COMMANDS
       string += "`#{command}`\n_#{commandData.description}_\n\n"
@@ -227,7 +245,7 @@ module.exports = class CommandProcessor extends EventEmitter
             # Execute the command
             return @['__' + commandData.func](params)
           catch e
-            return @_fail e.message
+            return @_fail e.message + "\n\n```" + e.stack + "```"
       @_fail "Invalid admin command!"
 
   ###

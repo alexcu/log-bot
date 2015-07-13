@@ -15,7 +15,28 @@ module.exports = class Roles
     d = Q.defer()
     RolesDatastore.find {}, (err, docs) ->
       throw err if err?
+      d.resolve docs
+    d.promise
+  ###
+  Invokes a request to all role names
+  @returns  [promise] A promise to the roll names
+  ###
+  @names: ->
+    d = Q.defer()
+    RolesDatastore.find {}, (err, docs) ->
+      throw err if err?
       d.resolve (_.pluck docs, 'name') # Just pluck the role names
+    d.promise
+  ###
+  Retrieves the role for the given roleName
+  @param    [string]  roleName  Slack user id
+  @returns  [promise] A promise to the role
+  ###
+  @find: (name) ->
+    d = Q.defer()
+    RolesDatastore.findOne { name: name }, (err, role) ->
+      return d.reject unless role?
+      d.resolve role
     d.promise
   ###
   Drops the role stored
@@ -42,7 +63,7 @@ module.exports = class Roles
   @add: (name) ->
     d = Q.defer()
     # Make sure this role doesn't yet exist
-    Roles.all().then (roles) ->
+    Roles.names().then (roles) ->
       roleAlreadyExists = name in roles
       return d.reject "Role \"#{name}\" already exists" if roleAlreadyExists
       # Now insert
@@ -53,18 +74,19 @@ module.exports = class Roles
   ###
   Associates a trigger to a role
   @param    [string]  name  The name of this role
-  @param    [Trigger] trigger The trigger to associate
+  @param    [Trigger] triggerKey The trigger key to associate
   @param    [TriggerManager]  triggerManager  The trigger manager which this trigger belongs to
   @returns  [promise] A promise to the result
   ###
-  @associateTrigger: (name, trigger, triggerManager) ->
+  @associateTrigger: (name, triggerKey, triggerManager) ->
     d = Q.defer()
-    d.reject "No such trigger #{trigger.key} in the Trigger Manager provided" if triggerManager.triggers[trigger.key]?
+    d.reject "No such trigger \"#{triggerKey}\" is known" unless triggerManager.triggers[triggerKey]?
+    trigger = triggerManager.triggers[triggerKey]
     # Make sure this role exists
-    Roles.all().then (roles) ->
+    Roles.names().then (roles) ->
       roleExists = name in roles
-      return d.reject "Role with the name #{name} does not exist" unless roleExists
-      RolesDatastore.update { role: name }, { $set: { trigger: trigger.key } }, {}, (err) ->
+      return d.reject "Role with the name \"#{name}\" does not exist" unless roleExists
+      RolesDatastore.update { name: name }, { $set: { trigger: trigger.key } }, {}, (err) ->
         throw err if err?
-        d.resolve "Trigger #{trigger.key} associated with role \"#{role}\""
+        d.resolve "Trigger \"#{trigger.key}\" associated with role \"#{name}\""
     d.promise

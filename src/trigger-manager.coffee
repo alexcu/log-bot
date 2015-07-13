@@ -2,18 +2,14 @@
 fs            = require 'fs'
 {CronJob}     = require 'cron'
 Trigger       = require './trigger'
+Q             = require 'q'
+
 ###
 The trigger manager class is responsible for managing triggers
 ###
 module.exports = class TriggerManager
-  ###
-  The triggers I know about
-  ###
-  triggers: {}
-  ###
-  @param  [LogBot]  logBot  The log bot that created the trigger manager
-  ###
-  constructor: (logBot) ->
+  @loadTriggerCache: ->
+    d = Q.defer()
     throw Error "No `triggerFile` key specified in `config.json`" unless triggerFile?
     # The constructor for the trigger manager will validate the trigger file on load
     fs.readFile triggerFile, (err, data) =>
@@ -36,7 +32,8 @@ module.exports = class TriggerManager
       throw Error "Triggers should be an object" if typeof triggers isnt 'object'
       # Validate each trigger
       for triggerKey, trigger of triggers
-        throw Error "Trigger key #{triggerKey} already exists!" if @triggers[triggerKey]?
+        triggerKey = triggerKey.toUpperCase();
+        throw Error "Duplicate trigger key \"#{triggerKey}\"!" if @triggerCache[triggerKey]?
         # Check root level keys
         for key, type of {question: 'string', responses: 'object', conditions: 'object'}
           throw Error "Key `#{key}` missing from trigger #{triggerKey}" unless trigger[key]?
@@ -56,4 +53,25 @@ module.exports = class TriggerManager
               throw Error "Invalid cron time for `time` conditional"
           if key is 'loggedInToday'
             throw Error "Conditional `loggedInToday` must be boolean" if typeof value isnt 'boolean'
-        @triggers[triggerKey] = new Trigger logBot, triggerKey, question, responses, conditions
+        @triggerCache[triggerKey] =
+          triggerKey: triggerKey
+          question:   question
+          responses:  responses
+          conditions: conditions
+      d.resolve @triggerCache
+    d.promise
+  ###
+  TriggerCache caches the triggers loaded
+  ###
+  @triggerCache: {}
+  ###
+  The triggers I know about
+  ###
+  triggers: {}
+  ###
+  @param  [LogBot]  logBot  The log bot that created the trigger manager
+  ###
+  constructor: (logBot) ->
+    TriggerManager.loadTriggerCache().then =>
+      for triggerKey, cache of TriggerManager.triggerCache
+        @triggers[triggerKey] = new Trigger logBot, cache.triggerKey, cache.question, cache.responses, cache.conditions

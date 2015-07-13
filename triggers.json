@@ -24,7 +24,7 @@
       },
       // Conditions that will trigger the trigger
       "conditions": {
-        "time": "00 16 * * 1-5",  // Every weekday at 4pm
+        "time": "* * * * 1-5",  // Every weekday at 4pm (00 16)
         "loggedInToday": true     // User must have logged in at least once during the day
       }
     },

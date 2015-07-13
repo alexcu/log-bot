@@ -37,21 +37,21 @@ module.exports = class LogBot extends EventEmitter
       console.log "#{@slack.self.name} has connected"
       # Update it anyway on creation of the bot to get first-time users
       @_updateUsers()
-      # Checking for messages
-      @slack.on 'message', (message) =>
-        # Is a DM?
-        user = @slack.getUserByID message.user
-        @_handleDM(message, user) if message.getChannelType() is 'DM'
-      # Checking for raw messages
-      @slack.on 'raw_message', (message) =>
-        # Specifically presence changes, where users have become online
-        if message.type is 'presence_change' and message.presence is 'active'
-          # Update the last_online field manually for this user
-          @slack.users[message.user].last_online = moment().unix()
-      # Whenever there is a new user to the team, create a new User
-      # type for them
-      @slack.on 'userChange', =>
-        @_updateUsers()
+    # Checking for messages
+    @slack.on 'message', (message) =>
+      # Is a DM?
+      user = @slack.getUserByID message.user
+      @_handleDM(message, user) if message.getChannelType() is 'DM'
+    # Checking for raw messages
+    @slack.on 'raw_message', (message) =>
+      # Specifically presence changes, where users have become online
+      if message.type is 'presence_change' and message.presence is 'active'
+        # Update the last_online field manually for this user
+        @slack.users[message.user].last_online = moment().unix()
+    # Whenever there is a new user to the team, create a new User
+    # type for them
+    @slack.on 'userChange', =>
+      @_updateUsers()
 
   ###
   Updates the team DB store

@@ -10,9 +10,9 @@
       // Expected possible responses as a RegExp
       "responses": {
         // If yes or y, then log 1 workDay's worth of hours hours
-        "yes|y":  "workDay",
+        "[yes|y]":  "workDay",
         // If no, ask another question
-        "no|n": {
+        "[no|n]": {
           // This question will specifically ask the number of hours to work
           "question": "How many hours did you work?",
           // And the expected answers would be

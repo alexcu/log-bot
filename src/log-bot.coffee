@@ -88,6 +88,7 @@ module.exports = class LogBot extends EventEmitter
       dm.send message
     # I expect a response from this user id
     @_awaitingResponse[userId] = expectResponse
+    console.log @_awaitingResponse
 
   ###
   Handles a DM from a given user
@@ -96,7 +97,7 @@ module.exports = class LogBot extends EventEmitter
   ###
   _handleDM: (message, user) =>
     # Is a DM from an Admin and not awaiting a response for that user?
-    if user.is_admin and not @_awaitingResponse[user.id]?
+    if user.is_admin and not @_awaitingResponse[user.id]
       # Create a new command processor to handle this
       @_commandProcessors[user.id] = new CommandProcessor @ unless @_commandProcessors[user.id]?
       @_commandProcessors[user.id].once 'commandParsed', (data) =>
@@ -105,10 +106,8 @@ module.exports = class LogBot extends EventEmitter
       @_commandProcessors[user.id].parse message.text
       @emit 'adminCommandReceived', message.text, user
     # Awaiting a response? Emit a DM
-    else if @_awaitingResponse[user.id]?
+    else if @_awaitingResponse[user.id]
       @emit 'dmResponseReceived', message, user
-      # We got the response, so delete the awaitingResponse for that user
-      delete @_awaitingResponse[user.id]
     else
       # Not awaiting a response and received a DM? Just emit it
       @emit 'dmReceived', message, user

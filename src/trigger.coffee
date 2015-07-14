@@ -10,17 +10,53 @@ A trigger to invoke a log. A trigger is applied to a particular role.
 ###
 module.exports = class Trigger
   ###
+  Timeouts for responding to triggers; hash contains the userId as key
+  and value as timeout
+  ###
+  _timeouts: {}
+  ###
   Performs the trigger to the given user
   @param  [string]  userId  The user id to perform the trigger on
   ###
   _performTrigger: (userId) =>
-    # Send the question
-    @logBot.sendDM @question, userId, true
-    # Add a handler for this user on a DM response which is received
-    @logBot.on 'dmResponseReceived', (message, user) =>
-      if user.id is userId
-        console.log "TODO: Received an expected response from user #{user.real_name} => #{message.text}. Parsing..."
+    ###
+    Applies the `responseActions` to the message that was received
+    @param  [object]  message   The message text received
+    @param  [object]  userId    The user id who responded
+    ###
+    _responseActionHandler = (message, user) =>
+      # Only parse expected user responses
+      return if user.id isnt userId
+      for regEx, action of @responseActions
         # TODO: Parse it against responseActions, ask again (recursively?) if not accepted...
+        if false#text.match regEx
+          console.log "Match"
+          clearTimeout @_timeouts[userId]
+          # Expire the timeout as the question was resolved
+          return
+      console.log "dont understand"
+      @logBot.sendDM "Sorry I don't understand", userId
+      @_performTrigger userId
+    ###
+    Applies the trigger expiration
+    ###
+    _applyExpirationHandler = =>
+      # Expire that handler after six hours
+      expiration = moment.duration(6, 'seconds').asMilliseconds()
+      console.log "Expiration is #{expiration}ms"
+      console.log _responseActionHandler
+      if @_timeouts[userId]?
+        console.log "Clearing timeout"
+        clearTimeout @_timeouts[userId]
+      @_timeouts[userId] = setTimeout (=> @logBot.sendDM "I'll ask you another time :pensive:", userId; @logBot.removeListener 'dmResponseReceived', _responseActionHandler), expiration
+    # Send the question
+    console.log "Asking question..."
+    @logBot.sendDM @question, userId, true
+    # Setup the expiration handler
+    _applyExpirationHandler()
+    console.log "setting up _responseActionHandler"
+    # Add a handler for this user on a DM response which is received
+    @logBot.once 'dmResponseReceived', _responseActionHandler
 
   ###
   @param  [LogBot]  logBot            The log bot connected to this trigger

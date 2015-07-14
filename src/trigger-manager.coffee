@@ -24,7 +24,7 @@ module.exports = class TriggerManager
       catch e
         throw Error "Bad JSON for triggers. Error: #{e.message}"
       # Grab out the workDay
-      workDay = rawTriggers.workDay
+      Trigger.workDay = workDay = rawTriggers.workDay
       throw Error "Key `workDay` missing in triggers.json" unless workDay?
       # Grab out each of the triggers
       triggers = rawTriggers.triggers

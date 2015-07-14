@@ -6,19 +6,19 @@
     // Log by hours
     "hours": {
       // Question to prompt when the trigger is invoked
-      "question": "Did you work a full day today?",
+      "question": "Did you work a full day today? (Answer `yes` or `no`)",
       // Expected possible responses as a RegExp
       "responses": {
         // If yes or y, then log 1 workDay's worth of hours hours
-        "[yes|y]":  "workDay",
+        "yes|y":  "workDay",
         // If no, ask another question
-        "[no|n]": {
+        "no|n": {
           // This question will specifically ask the number of hours to work
           "question": "How many hours did you work?",
           // And the expected answers would be
           "responses": {
             // E.g. 1.5hrs, 1.5, 3, 1.0h
-            "/(\d+(?:\.\d+)?)(?:hrs|h|hours)/": "$1" // and use their response to log it
+            "\d+(\.\d+)?": "$1" // and use their response to log it
           }
         }
       },
@@ -33,17 +33,17 @@
       "question": "What projects have you worked on this week? (separate multiple with commas)",
       "responses": {
         // Only one project the whole week (5 days)
-        "([A-z0-9\_\-\s]+){1}": "5 * workDay",
+        "^[^,]+$": "5 * workDay",
         // Multiple projects comma-separated
-        "([A-z0-9\_\-\s]+)(?:,\s*)?": {
-          "question": "Please estimate the days you worked on $1:",
+        "[^,]+": {
+          "question": "Please estimate the number of days you worked on $1:",
           "responses": {
-            "(\d+(?:\.\d+)?)(?:days|d)": "$1 * workDay"
+            "\d+(\.\d+)?": "$1 * workDay"
           }
         }
       },
       "conditions": {
-        "time": "00 16 * * 5" // Every Friday at 4pm
+        "time": "* * * * 1-5" // Every Friday at 4pm 00 16 * * 5
       }
     }
   }

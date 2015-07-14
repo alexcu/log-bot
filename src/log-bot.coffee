@@ -88,7 +88,6 @@ module.exports = class LogBot extends EventEmitter
       dm.send message
     # I expect a response from this user id
     @_awaitingResponse[userId] = expectResponse
-    console.log @_awaitingResponse
 
   ###
   Handles a DM from a given user

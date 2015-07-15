@@ -76,8 +76,13 @@ module.exports = class Trigger
                 # Only clear the timeout when the question is resolved
                 clearTimeout @_timeouts[userId]
                 @logBot.sendDM "Thank you. I have logged *#{answer} hours* for #{if project? then "_" + project + "_" else "your work"}. :simple_smile:", userId
-                # Leave a token to unblock for the next question to be asked
-                @_blocks[userId].leave()
+                # Leave a token to unblock for the next question to be asked,
+                # granted it isn't the last question
+                if index isnt (matches.length - 1)
+                  @_blocks[userId].leave()
+                # If this was the last question, we can delete the semaphore
+                else
+                  delete @_blocks[userId]
               # If action is a second set of questions
               else if typeof action is 'object'
                 # Take acquisition of the asking block

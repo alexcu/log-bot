@@ -41,6 +41,8 @@ module.exports = class TriggerManager
         question    = trigger.question
         responses   = trigger.responses
         conditions  = trigger.conditions
+        helpText    = trigger.helpText
+        throw Error "Key `helpText` should be a string type" if helpText? and typeof helpText isnt 'string'
         # Time is currently required
         throw Error "Required `time` conditional missing from trigger #{triggerKey}" unless conditions.time?
         # Validate the conditions
@@ -56,6 +58,7 @@ module.exports = class TriggerManager
         @triggerCache[triggerKey] =
           triggerKey: triggerKey
           question:   question
+          helpText:   helpText
           responses:  responses
           conditions: conditions
       d.resolve @triggerCache
@@ -74,4 +77,4 @@ module.exports = class TriggerManager
   constructor: (logBot) ->
     TriggerManager.loadTriggerCache().then =>
       for triggerKey, cache of TriggerManager.triggerCache
-        @triggers[triggerKey] = new Trigger logBot, cache.triggerKey, cache.question, cache.responses, cache.conditions
+        @triggers[triggerKey] = new Trigger logBot, cache.triggerKey, cache.question, cache.helpText, cache.responses, cache.conditions

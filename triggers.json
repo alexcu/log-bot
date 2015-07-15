@@ -6,13 +6,15 @@
     // Log by hours
     "hours": {
       // Question to prompt when the trigger is invoked
-      "question": "Did you work a full day today? (Answer `yes` or `no`)",
+      "question": "Did you work a full day today?",
+      // Optional description for the question
+      "helpText": "Answer with either 'yes' or 'no'",
       // Expected possible responses as a RegExp
       "responses": {
         // If yes or y, then log 1 workDay's worth of hours hours
-        "yes|y":  "workDay",
+        "^[Yy]":  "workDay",
         // If no, ask another question
-        "no|n": {
+        "^[Nn]": {
           // This question will specifically ask the number of hours to work
           "question": "How many hours did you work?",
           // And the expected answers would be
@@ -30,13 +32,14 @@
     },
     // Log by project
     "projects": {
-      "question": "What projects have you worked on this week? (separate multiple with commas)",
+      "question": "What projects have you worked on this week?",
+      "helpText": "Separate multiple projects with commas, e.g. 'Project X, Project Y, Project Z'",
       "responses": {
         // Only one project the whole week (5 days)
         "^[^,]+$": "5 * workDay",
         // Multiple projects comma-separated
         "[^,]+": {
-          "question": "Please estimate the number of days you worked on $1:",
+          "question": "Please estimate the number of days you worked on _$1_:",
           "responses": {
             "\d+(\.\d+)?": "$1 * workDay"
           }

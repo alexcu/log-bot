@@ -27,7 +27,7 @@ module.exports = class DataServer
   ###
   The actual data server
   ###
-  @_server: @_express.listen 3000, =>
+  @_server: @_express.listen port, =>
     console.log "Data server is up at http://%s:%s/", @_server.address().address, @_server.address().port
 
   ###

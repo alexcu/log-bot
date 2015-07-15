@@ -3,60 +3,82 @@
   "workDay": 7.5,
   // The various triggers
   "triggers": {
-    // Log by hours
+    // First example - Log by hours
     "hours": {
-      // Question to prompt when the trigger is invoked
+      // Initial question to prompt when the trigger is invoked
       "question": "Did you work a full day today?",
-      // Optional description for the question
+      // Optional description for the initial question
       "helpText": "Answer with either 'yes' or 'no'",
-      // Expected possible responses as a RegExp
+      // Expected possible responses as a regular expression
       "responses": {
-        // If yes or y, then log 1 workDay's worth of hours hours
-        "^[Yy]":  "workDay",
-        // If no, ask another question
+        // Affirmative response (begins with Y)...
+        "^[Yy]":  "1 * workDay",  // The number of hours logged is (1 * workDay) hours
+        // Negative response (begins with N)...
         "^[Nn]": {
           // This question will specifically ask the number of hours to work
           "question": "How many hours did you work?",
-          // And the expected answers would be
+          // And the expected answers would be a numerical (integer or decimal) answer
           "responses": {
-            // E.g. 1.5hrs, 1.5, 3, 1.0h
-            "\d+(\.\d+)?": "$1" // and use their response to log it
+            // Use $1 in the response to capture the value of the response
+            "\d+(\.\d+)?": "$1" // Use the captured answer as the number of hours to log
           }
         }
       },
-      // Conditions that will trigger the trigger
+      // Conditions that will fire this trigger
       "conditions": {
-        "time": "* * * * 1-5",  // Every weekday at 4pm (00 16)
-        "loggedInToday": true     // User must have logged in at least once during the day
+        // Time is in cronjob format
+        "time": "00 16 * * 1-5",  // Every weekday at 4pm
+        "loggedInToday": true     // User must have logged in at least once during
+                                  // the day the trigger was fired
       }
     },
-    // Log by project
+    // Second example - Log by project
     "projects": {
-      "question": "What projects have you worked on this week?",
+      // Initial question asked in this trigger
+      "question": "What project(s) have you worked on this week?",
+      // Once again, an optional helpText key
       "helpText": "Separate multiple projects with commas, e.g. 'Project X, Project Y, Project Z'",
+      // Again, expected possible responses as a regular expression
       "responses": {
-        // Only one project the whole week (5 days)
+        // Anything that isn't comma-separated?
         "^[^,]+$": {
+          // Confirm with the user that they have only worked on that one project.
+          // Note:  we can use $1 also in questions to capture the previous response
+          //        asked in the initial question too, in this case, the project that
+          //        the user had entered in when asked which project(s) they worked on
           "question": "To confirm, you worked the whole week on _$1_?",
+          // You can also have helpText in a response block too!
           "helpText": "Answer with either 'yes' or 'no'",
+          // And you can also have a sub-response block in a response block (that is,
+          // you can keep asking further question until a response is resolved to just
+          // as singular string, as is the case with both responses below...)
           "responses": {
-            // Answered yes? So the whole (5 days * 1 workDay) hours
-            "^[Yy]": "5 * workDay",
-            // $! signals for the initial question to be asked again
+            // Answered in the affirmative?
+            "^[Yy]": "5 * workDay", // So the whole (5 days * 1 workDay) hours
+            // A "$!" resolved response action will signal LogBot to ask the initial
+            // question again, in this case, the user wishes to change their mind on
+            // saying they have only worked one project the whole week
             "^[Nn]": "$!"
           }
         },
-        // Multiple projects comma-separated
+        // Multiple projects responded (i.e., comma-separated...)
         "[^,]+": {
+          // When there are multiple matches in the regular expression, as is the case
+          // in the regular expression /[^,]+/g above, AND the next question to ask
+          // will contain a $1, then multiple questions/actions will be asked/resolved
+          // in the following "responses" block
           "question": "Please estimate the number of days you worked on _$1_:",
           "responses": {
-            // Multiplies the number of days they responded for this project by the hours in a work day
-            "\d+(\.\d+)?": "$1 * workDay"
+            // The only acceptable answer is a numerical (integer or decimal) response
+            "\d+(\.\d+)?": "$1 * workDay" // Multiplies the number of days they
+                                          // responded for this project ($1) by
+                                          // the hours in a work day
           }
         }
       },
+      // Once again, the conditions that will fire the trigger
       "conditions": {
-        "time": "* * * * 1-5" // Every Friday at 4pm 00 16 * * 5
+        "time": "00 16 * * 5" // Every Friday at 4pm
       }
     }
   }

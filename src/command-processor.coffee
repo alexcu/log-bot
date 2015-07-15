@@ -143,7 +143,7 @@ module.exports = class CommandProcessor extends EventEmitter
   @param  [object]  args  The command args
   ###
   __getLogsForRole: (args) =>
-    role = args.role[0]
+    role = args.roles[0]
     Logs.forRole(role).then (logs) =>
       Logs.asCSV(logs).then (csv) =>
         @_success 'One-time download link: ' + DataServer.store csv

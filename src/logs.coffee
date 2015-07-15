@@ -58,14 +58,15 @@ module.exports = class Logs
     d = Q.defer()
     csv = "name,role,date,hours,project\n"
     for log, index in logs
-      userId = log.user
-      Users.find(userId).then (user) ->
-        role  = user.role
-        name  = user.profile.real_name
-        date  = moment.unix(log.time).format("DD/MM/YYYY")
-        hours = log.hours.toFixed(2)
-        project = log.project or "n/a"
-        csv += "#{name},#{role},#{date},#{hours},#{project}\n"
-        # Resolve the csv if it's the last one
-        d.resolve csv if index is (logs.length - 1)
+      do (log, index) ->
+        userId = log.user
+        Users.find(userId).then (user) ->
+          role  = user.role
+          name  = user.profile.real_name
+          date  = moment.unix(log.time).format("DD/MM/YYYY")
+          hours = log.hours.toFixed(2)
+          project = log.project or "n/a"
+          csv += "#{name},#{role},#{date},#{hours},#{project}\n"
+          # Resolve the csv if it's the last one
+          d.resolve csv if index is (logs.length - 1)
     d.promise

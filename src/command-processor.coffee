@@ -1,7 +1,9 @@
 Users           = require './users'
 Roles           = require './roles'
+Logs            = require './logs'
 {EventEmitter}  = require 'events'
 _               = require 'underscore'
+DataServer      = require './data-server'
 
 ###
 This class is responsible for handling bot admin commands
@@ -131,20 +133,28 @@ module.exports = class CommandProcessor extends EventEmitter
   Gets the logs for the given users
   @param  [object]  args  The command args
   ###
-  __getLogsForUser: (args) ->
-    "TODO: Implement __getLogsForUsers\t args = (#{JSON.stringify args})"
+  __getLogsForUser: (args) =>
+    userId = args.users[0]
+    Logs.forUser(userId).then (logs) =>
+      Logs.asCSV(logs).then (csv) =>
+        @_success 'One-time download link: ' + DataServer.store csv
   ###
   Gets the logs for the given role
   @param  [object]  args  The command args
   ###
-  __getLogsForRole: (args) ->
-    "TODO: Implement __getLogsForRole\t args = (#{JSON.stringify args})"
+  __getLogsForRole: (args) =>
+    role = args.role[0]
+    Logs.forRole(role).then (logs) =>
+      Logs.asCSV(logs).then (csv) =>
+        @_success 'One-time download link: ' + DataServer.store csv
   ###
   Gets all logs available
   @param  [object]  args  The command args
   ###
-  __getAllLogs: (args) ->
-    "TODO: Implement __getAllLogs\t args = (#{JSON.stringify args})"
+  __getAllLogs: (args) =>
+    Logs.all().then (logs) =>
+      Logs.asCSV(logs).then (csv) =>
+        @_success 'One-time download link: ' + DataServer.store csv
   ###
   Assigns the role the provided trigger
   @param  [object]  args  The command args

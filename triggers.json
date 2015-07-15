@@ -36,7 +36,16 @@
       "helpText": "Separate multiple projects with commas, e.g. 'Project X, Project Y, Project Z'",
       "responses": {
         // Only one project the whole week (5 days)
-        "^[^,]+$": "5 * workDay",
+        "^[^,]+$": {
+          "question": "To confirm, you worked the whole week on _$1_?",
+          "helpText": "Answer with either 'yes' or 'no'",
+          "responses": {
+            // Answered yes? So the whole (5 days * 1 workDay) hours
+            "^[Yy]": "5 * workDay",
+            // $! signals for the initial question to be asked again
+            "^[Nn]": "$!"
+          }
+        },
         // Multiple projects comma-separated
         "[^,]+": {
           "question": "Please estimate the number of days you worked on _$1_:",

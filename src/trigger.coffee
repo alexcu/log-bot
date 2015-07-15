@@ -53,17 +53,22 @@ module.exports = class Trigger
             do (match, index) =>
               # If action is the logging period?
               if typeof action is 'string'
-                # Need to replace a workDay with the actual value it has
-                action = action.replace /workDay/, Trigger.workDay
-                action = action.replace /\$1/, match
-                # Evaluate the mathematical expression in the action
-                hours = parseFloat(eval action)
-                project = (if extraParams? then extraParams.previousMatch)
-                # Actually insert the log!
-                Logs.insert userId, hours, project
-                # Only clear the timeout when the question is resolved
-                clearTimeout @_timeouts[userId]
-                @logBot.sendDM "Thank you. I have logged *#{hours.toFixed(2)} hours* for #{if project? then "_" + project + "_" else "your work"}. :simple_smile:", userId
+                # If we have encountered a $! action, then restart
+                # from initial questions and responses
+                if action is "$!"
+                  @_performTrigger userId, @question, @responseActions, {helpText: @helpText}
+                else
+                  # Need to replace a workDay with the actual value it has
+                  action = action.replace /workDay/, Trigger.workDay
+                  action = action.replace /\$1/, match
+                  # Evaluate the mathematical expression in the action
+                  hours = parseFloat(eval action)
+                  project = (if extraParams? then extraParams.previousMatch)
+                  # Actually insert the log!
+                  Logs.insert userId, hours, project
+                  # Only clear the timeout when the question is resolved
+                  clearTimeout @_timeouts[userId]
+                  @logBot.sendDM "Thank you. I have logged *#{hours.toFixed(2)} hours* for #{if project? then "_" + project + "_" else "your work"}. :simple_smile:", userId
                 # Leave a token to unblock for the next question to be asked,
                 # granted it isn't the last question
                 @_blocks[userId].leave() if @_blocks[userId].current isnt 0
@@ -111,7 +116,7 @@ module.exports = class Trigger
   @param  [object]  responseActions   The expected response/action pairs
   @param  [object]  triggerConditions The conditions which cause this trigger to fire
   ###
-  constructor: (@logBot, @key, question, helpText, responseActions, triggerConditions) ->
+  constructor: (@logBot, @key, @question, @helpText, @responseActions, triggerConditions) ->
     @_cronJob = new CronJob '00' + triggerConditions.time, =>
       # Find all applicable roles which this trigger will run for
       Roles.all().then (roles) =>
@@ -131,7 +136,7 @@ module.exports = class Trigger
                   lastOnline = slackUser.last_online
                   lastOnlineToday = moment.unix(lastOnline).isSame(moment(), 'day');
                   # Only perform the trigger if lastOnlineToday
-                  @_performTrigger user.id, question, responseActions, {helpText: helpText} if lastOnlineToday
+                  @_performTrigger user.id, @question, @responseActions, {helpText: @helpText} if lastOnlineToday
               else
-                @_performTrigger user.id, question, responseActions, {helpText: helpText}
+                @_performTrigger user.id, @question, @responseActions, {helpText: @helpText}
     @_cronJob.start()

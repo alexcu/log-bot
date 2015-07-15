@@ -45,7 +45,7 @@ module.exports = class Logs
   @forRole: (role) ->
     d = Q.defer()
     Users.usersForRole(role).then (users) ->
-      userIds = (id for user in users)
+      userIds = (user.id for user in users)
       LogsDatastore.find({ user: { $in: userIds } }).sort({ time: 1 }).exec (err, logs) ->
         d.resolve logs
     d.promise

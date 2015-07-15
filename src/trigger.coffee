@@ -1,6 +1,7 @@
 {CronJob}     = require 'cron'
 Users         = require './users'
 Roles         = require './roles'
+Logs          = require './logs'
 _             = require 'underscore'
 moment        = require 'moment'
 Q             = require 'Q'
@@ -24,21 +25,7 @@ module.exports = class Trigger
   and the semaphore as the value
   ###
   _blocks: {}
-  ###
-  Logs the evaluated hours for the given project (if applicable)
-  @param  [string]  userId  The user to log for
-  @param  [integer] hours   Hours to log
-  @param  [string]  project An optional project to log
-  ###
-  _logHours: (hours, userId, project = null) =>
-    console.log "Logging hours..."
-    Users.find(userId).then (user) =>
-      name = (@logBot.slack.getUserByID userId).real_name
-      role = user.role
-      date = moment().format("DD/MM/YYYY")
-      project = project or "n/a"
-      console.log "name,role,date,hours,project"
-      console.log "#{name},#{role},#{date},#{hours},#{project}"
+
   ###
   Performs the trigger to the given user
   @param  [string]  userId            The user id to perform the trigger on
@@ -70,12 +57,13 @@ module.exports = class Trigger
                 action = action.replace /workDay/, Trigger.workDay
                 action = action.replace /\$1/, match
                 # Evaluate the mathematical expression in the action
-                answer = parseFloat(eval action).toFixed(2)
+                hours = parseFloat(eval action)
                 project = (if extraParams? then extraParams.previousMatch)
-                @_logHours answer, userId, project
+                # Actually insert the log!
+                Logs.insert userId, hours, project
                 # Only clear the timeout when the question is resolved
                 clearTimeout @_timeouts[userId]
-                @logBot.sendDM "Thank you. I have logged *#{answer} hours* for #{if project? then "_" + project + "_" else "your work"}. :simple_smile:", userId
+                @logBot.sendDM "Thank you. I have logged *#{hours.toFixed(2)} hours* for #{if project? then "_" + project + "_" else "your work"}. :simple_smile:", userId
                 # Leave a token to unblock for the next question to be asked,
                 # granted it isn't the last question
                 if index isnt (matches.length - 1)

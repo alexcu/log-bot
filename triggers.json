@@ -41,6 +41,7 @@
         "[^,]+": {
           "question": "Please estimate the number of days you worked on _$1_:",
           "responses": {
+            // Multiplies the number of days they responded for this project by the hours in a work day
             "\d+(\.\d+)?": "$1 * workDay"
           }
         }

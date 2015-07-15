@@ -51,10 +51,13 @@ module.exports = class CommandProcessor extends EventEmitter
       description:  'Gets every role that I know about'
       func:         'getAllRoles'
     # Log-based commands
-    'GET LOGS FOR [USERS]':
-      description:  'Gets each log for each user provided'
-      func:         'getLogsForUsers'
-    'GET LOGS':
+    'GET LOGS FOR [USER]':
+      description:  'Gets each log the user provided'
+      func:         'getLogsForUser'
+    'GET LOGS FOR [ROLE]':
+      description:  'Gets each log for every user that has the role provided'
+      func:         'getLogsForRole'
+    'GET ALL LOGS':
       description:  'Gets every log that I know about'
       func:         'getAllLogs'
     # Triggers
@@ -128,8 +131,14 @@ module.exports = class CommandProcessor extends EventEmitter
   Gets the logs for the given users
   @param  [object]  args  The command args
   ###
-  __getLogsForUsers: (args) ->
+  __getLogsForUser: (args) ->
     "TODO: Implement __getLogsForUsers\t args = (#{JSON.stringify args})"
+  ###
+  Gets the logs for the given role
+  @param  [object]  args  The command args
+  ###
+  __getLogsForRole: (args) ->
+    "TODO: Implement __getLogsForRole\t args = (#{JSON.stringify args})"
   ###
   Gets all logs available
   @param  [object]  args  The command args

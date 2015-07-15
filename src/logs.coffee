@@ -23,7 +23,7 @@ module.exports = class Logs
   ###
   @all: ->
     d = Q.defer()
-    LogsDatastore.find {}, (err, docs) ->
+    LogsDatastore.find({}).sort({ time: 1 }).exec (err, docs) ->
       throw err if err?
       d.resolve docs
     d.promise
@@ -34,7 +34,7 @@ module.exports = class Logs
   ###
   @forUser: (userId) ->
     d = Q.defer()
-    LogsDatastore.find { user: userId }, (err, logs) ->
+    LogsDatastore.find({ user: userId }).sort({ time: 1 }).exec (err, logs) ->
       d.resolve logs
     d.promise
   ###
@@ -46,7 +46,7 @@ module.exports = class Logs
     d = Q.defer()
     Users.usersForRole(role).then (users) ->
       userIds = (id for user in users)
-      LogsDatastore.find { user: { $in: userIds } }, (err, logs) ->
+      LogsDatastore.find({ user: { $in: userIds } }).sort({ time: 1 }).exec (err, logs) ->
         d.resolve logs
     d.promise
   ###

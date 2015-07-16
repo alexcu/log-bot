@@ -38,12 +38,14 @@ A configuration file for LogBot settings is needed, `config.json`. Place this fi
 
 A trigger configuration describes possible triggers. The JSON file can be commented with `//` comments inside this JSON file to help keep your file organised.
 
+There is a commented example `triggers.json` that you can read through and model your own triggers from.
+
 There are two required root fields in the trigger file:
 
 - `workDay` A number to describe the typical working hours expected in your team in a working day.
 - `triggers` An object containing keys for each of your various triggers.
 
-Each key inside the `triggers` object is the unique name of that trigger. A trigger will typically contain four keys:
+Each key inside the `triggers` object is the unique name of that trigger. A trigger's unique name can **only contain alphanumeric, spaces, dashes and underscore characters**. A trigger will typically contain four keys:
 
 - `question` The initial question to prompt to the user when the trigger is fired.
 - `helpText` An optional help text, usually to provide help on which answers are acceptable for the question asked
@@ -54,12 +56,12 @@ Each key inside the `triggers` object is the unique name of that trigger. A trig
 
 Inside the `responses` object should contain key/value bindings to **regular expressions** (key) and the appropriate **action** (value) LogBot takes when the regular expression is matched against user responses.
 
-If the action is a **string**, it should represent either a mathematical expression that will return the number of hours to log, or signal LogBot to reask the question. You can use `workDay` in the expression calculated, `$1` to use the answer the user has entered captured by the regular expression, or For example:
+If the action is a **string**, it should represent either a mathematical expression that will return the number of hours to log, or signal LogBot to reask the question. You can use `workDay` in the expression calculated, `$1` to use the answer the user has entered captured by the regular expression, or `$!` to make LogBot re-ask the trigger from its initial question. For example:
 
 ```
-"\d"    : "$1",				// Use the integer captured by the regular expression 
+"\d"    : "$1",				// Use the integer captured by the regular expression
 							// "\d" for the hours logged
-						
+
 "yes|y" : "5 * workDay",	// Where the user responds "yes" or "y", use five
 							// mulitplied by one workDay for the hours logged
 
@@ -78,3 +80,39 @@ At present, two conditions are currently supported:
 - `loggedInToday`, resolving to either `true` or `false`, to check whether the user the trigger is being applied to has signed in to Slack _at least once_.
 
 The `time` **is mandatory** and should be present in every trigger you write.
+
+# Using LogBot
+
+## As an administrator
+
+As a Slack administrator user, you will have the ability to create new roles, assign other Slack users to roles, and assign roles various triggers, using an SQL-esque DSL. Admin users can interact with LogBot by issuing these commands via sending it an IM.
+
+Note that when communicating with LogBot, Role and Trigger names _must_ be encapsulated with double quotes. Users _must_ be referenced using Slack's `@someone` syntax.
+
+Note that when creating roles, a role name can **only contain alphanumeric, spaces, dashes and underscore characters**.
+
+Use the `HELP` command to see what LogBot knows.
+
+### Role Commands
+
+- `ADD ROLE "Intern Staff"` Creates a new role named "Intern Staff"
+- `ASSIGN @freddy ROLE "Intern Staff"` Assigns the user who's tag is `@freddy` the newly created role "Intern Staff"
+- `GET ROLES FOR @freddy, @frankey, @jerry` Gets roles for `@freddy`, `@frankey` and `@jerry`
+- `DROP ROLE "Intern Staff"` Will remove the `Intern Staff` role, and in this case `@freddy` will be unassigned his role
+- `GET ALL ROLES` Get every role that LogBot knows of
+
+### Log Commands
+
+- `GET LOG FOR @freddy` Will generate the download link for `@freddy`'s logs
+- `GET LOGS FOR "Intern Staff", "Full Time Staff"` Will generate the download link for these roles
+- `GET ALL LOGS` Will generate the download link for every log available
+
+### Trigger Commands
+
+- `GET ALL TRIGGERS` Get every trigger that is available
+- `GET TRIGGER FOR "Intern Staff"` Will return the triggers associated to the role `Intern Staff`
+
+## As a non-administrator
+
+As a standard Slack user, your interaction with LogBot is very limited. Like Slackbot, LogBot will ignore what you say. The only time LogBot will listen to you is when a trigger fires and asks you a question, of which you have _at least_ **six hours** to respond.
+

@@ -29,25 +29,34 @@ module.exports = class Logs
     d.promise
   ###
   Finds all logs for a given user
-  @param  [string]  userId  The user to find
+  @param  [string|array]  userIds  The user(s) to find
   @returns  [promise] A promise to the logs found
   ###
-  @forUser: (userId) ->
+  @forUsers: (userIds) ->
     d = Q.defer()
-    LogsDatastore.find({ user: userId }).sort({ time: 1 }).exec (err, logs) ->
+    userIds = [userIds] if typeof userIds is 'string'
+    LogsDatastore.find({ user: { $in: userIds } }).sort({ time: 1 }).exec (err, logs) ->
       d.resolve logs
     d.promise
   ###
   Finds all logs for a given role
-  @param  [string]  role  The role to find
+  @param  [string|array]  role  The role(s) to find
   @returns  [promise] A promise to the logs found
   ###
-  @forRole: (role) ->
+  @forRoles: (roles) ->
     d = Q.defer()
-    Users.usersForRole(role).then (users) ->
-      userIds = (user.id for user in users)
-      LogsDatastore.find({ user: { $in: userIds } }).sort({ time: 1 }).exec (err, logs) ->
-        d.resolve logs
+    roles = [roles] if typeof roles is 'string'
+    logsFound = []
+    for role, index in roles
+      do (role, index) ->
+        Users.usersForRole(role).then (users) ->
+          userIds = (user.id for user in users)
+          LogsDatastore.find({ user: { $in: userIds } }).sort({ time: 1 }).exec (err, logs) ->
+            logsFound = logsFound.concat logs
+            # Keep appending to the logs found
+            if index is roles.length - 1
+              d.resolve logsFound
+
     d.promise
   ###
   Formats log documents as CSV data

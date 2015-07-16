@@ -54,12 +54,12 @@ module.exports = class CommandProcessor extends EventEmitter
       description:  'Gets every role that I know about'
       func:         'getAllRoles'
     # Log-based commands
-    'GET LOGS FOR [USER]':
-      description:  'Gets each log the user provided'
-      func:         'getLogsForUser'
-    'GET LOGS FOR [ROLE]':
-      description:  'Gets each log for every user that has the role provided'
-      func:         'getLogsForRole'
+    'GET LOGS? FOR [USERS]':
+      description:  'Gets each log the user(s) provided'
+      func:         'getLogsForUsers'
+    'GET LOGS? FOR [ROLES]':
+      description:  'Gets each log for every user that has the role(s) provided'
+      func:         'getLogsForRoles'
     'GET ALL LOGS':
       description:  'Gets every log that I know about'
       func:         'getAllLogs'
@@ -99,12 +99,10 @@ module.exports = class CommandProcessor extends EventEmitter
       do (roles) =>
         role = roles.shift()
         last = roles.length is 0
-        console.log 1
         Roles.add(role)
         .then ((success)  => responses.push success; d.resolve [@_success, responses.join ', '] if last),
               ((err)      => d.resolve [@_fail, err])
     d.promise.spread (func, msg) =>
-      console.log 2, func, msg
       func msg
   ###
   Drops an existing role
@@ -157,21 +155,23 @@ module.exports = class CommandProcessor extends EventEmitter
       func msg
 
   ###
-  Gets the logs for the given users
+  Gets the logs for the given user(s)
   @param  [object]  args  The command args
   ###
-  __getLogsForUser: (args) =>
-    userId = args.users[0]
-    Logs.forUser(userId).then (logs) =>
+  __getLogsForUsers: (args) =>
+    userIds = args.users
+    Logs.forUsers(userIds).then (logs) =>
+      @_fail "No logs found" if logs.length is 0
       Logs.asCSV(logs).then (csv) =>
         @_success 'One-time download link: ' + DataServer.store csv
   ###
-  Gets the logs for the given role
+  Gets the logs for the given role(s)
   @param  [object]  args  The command args
   ###
-  __getLogsForRole: (args) =>
-    role = args.roles[0]
-    Logs.forRole(role).then (logs) =>
+  __getLogsForRoles: (args) =>
+    roles = args.roles
+    Logs.forRoles(roles).then (logs) =>
+      @_fail "No logs found" if logs.length is 0
       Logs.asCSV(logs).then (csv) =>
         @_success 'One-time download link: ' + DataServer.store csv
   ###
@@ -260,7 +260,6 @@ module.exports = class CommandProcessor extends EventEmitter
   ###
   _match: (input, command) =>
     matches = input.match(@_regExpForCommand command)
-    console.log @_regExpForCommand command
     matches?.length > 0
 
   ###
@@ -293,7 +292,8 @@ module.exports = class CommandProcessor extends EventEmitter
             # Execute the command
             return @['__' + commandData.func](params)
           catch e
-            return @_fail e.message + "\n\n```" + e.stack + "```"
+            return @_fail  "Internal error: " + e.message + "\n\n```" + e.stack + "```" +
+                           "\n\nReport an issue? https://github.com/alexcu-/log-bot/issues"
       @_fail "Invalid admin command!"
 
   ###

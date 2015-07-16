@@ -32,8 +32,9 @@ module.exports = class TriggerManager
       throw Error "Triggers should be an object" if typeof triggers isnt 'object'
       # Validate each trigger
       for triggerKey, trigger of triggers
-        triggerKey = triggerKey.toUpperCase();
+        triggerKey = triggerKey.trim().toUpperCase();
         throw Error "Duplicate trigger key \"#{triggerKey}\"!" if @triggerCache[triggerKey]?
+        throw Error "Trigger keys only contain alphanumeric, spaces, dashes and underscore characters (invalid key \"#{triggerKey}\")" unless /^[A-Z\_\s\-\d]+$/.test triggerKey
         # Check root level keys
         for key, type of {question: 'string', responses: 'object', conditions: 'object'}
           throw Error "Key `#{key}` missing from trigger #{triggerKey}" unless trigger[key]?

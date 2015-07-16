@@ -4,7 +4,7 @@ Roles         = require './roles'
 Logs          = require './logs'
 _             = require 'underscore'
 moment        = require 'moment'
-Q             = require 'Q'
+Q             = require 'q'
 ###
 A trigger to invoke a log. A trigger is applied to a particular role.
 ###

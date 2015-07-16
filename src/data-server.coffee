@@ -1,7 +1,7 @@
 express   = require 'express'
 uuid      = require 'node-uuid'
 {Buffer}  = require 'buffer'
-{port}    = require './config'
+{server}  = require './config'
 ###
 An express server to handle serving of data
 ###
@@ -27,8 +27,8 @@ module.exports = class DataServer
   ###
   The actual data server
   ###
-  @_server: @_express.listen port, =>
-    console.log "Data server is up at http://%s:%s/", @_server.address().address, @_server.address().port
+  @_server: @_express.listen server.port, =>
+    console.log "Data server is up at http://%s:%s/", server.ip, server.port
 
   ###
   The urls hash stores data at the given /data/:id endpoint
@@ -46,4 +46,4 @@ module.exports = class DataServer
       data = new Buffer(data)
     id = uuid.v4()
     @_data[id] = data
-    "http://#{@_server.address().address}:#{@_server.address().port}/data/#{id}"
+    "http://#{server.ip}:#{server.port}/data/#{id}"

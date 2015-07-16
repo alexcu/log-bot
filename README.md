@@ -25,14 +25,17 @@ A configuration file for LogBot settings is needed, `config.json`. Place this fi
   "botToken": "xoxb-xxxxxxx-xxxxxxxxxxxx",
   "triggerFile" : "triggers.json",
   "datastoreDirectory" : "res",
-  "port": 3333
+  "server" : {
+    "ip" : "xxx.xxx.xxx.xxx",
+    "port" : 3000
+  }
 }
 ```
 
 - `botToken` Your auth token for the bot you have [created](https://slack.com/services/new/bot) on Slack
 - `triggerFile` Where your [trigger file](#triggers) is located. Can be an absolute path, otherwise is it relative to the `log-bot` root directory. If you want to place this file alongside that of `config.json`, then just leave this as `triggers.json`
 - `datastoreDirectory` A relative or absolute path for where LogBot can store data.
-- `port` The port which LogBot hosts its data server from the machine it is run on.
+- `server` The server `ip` and `port` which LogBot hosts its data server from the machine it is run on.
 
 ## [Creating triggers](id:triggers)
 

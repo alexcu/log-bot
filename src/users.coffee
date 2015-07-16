@@ -25,7 +25,7 @@ module.exports = class Users
   @find: (id) ->
     d = Q.defer()
     UsersDatastore.findOne { id: id }, (err, user) ->
-      return d.reject unless user?
+      return d.reject() unless user?
       d.resolve user
     d.promise
   ###

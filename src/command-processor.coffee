@@ -48,7 +48,7 @@ module.exports = class CommandProcessor extends EventEmitter
                      Warning: any user that has this role will be stripped of that role.'
       func:         'dropRoles'
     'GET ROLES? FOR [USERS]':
-      description:  'Gets the role(s) for the given user'
+      description:  'Gets the role(s) for the given user(s)'
       func:         'getRolesForUsers'
     'GET ALL ROLES':
       description:  'Gets every role that I know about'
@@ -70,9 +70,9 @@ module.exports = class CommandProcessor extends EventEmitter
     'GET ALL TRIGGERS':
       description:  'Gets every trigger that I know about'
       func:         'getAllTriggers'
-    'GET TRIGGER FOR [ROLE]':
-      description:  'Gets the trigger associated to the given role'
-      func:         'getTriggerForRole'
+    'GET TRIGGERS? FOR [ROLES]':
+      description:  'Gets the trigger(s) associated to the given role(s)'
+      func:         'getTriggersForRoles'
     # Help
     'HELP':
       description:  'Shows this help menu'
@@ -180,6 +180,7 @@ module.exports = class CommandProcessor extends EventEmitter
   ###
   __getAllLogs: (args) =>
     Logs.all().then (logs) =>
+      @_fail "No logs found" if logs.length is 0
       Logs.asCSV(logs).then (csv) =>
         @_success 'One-time download link: ' + DataServer.store csv
   ###
@@ -195,17 +196,28 @@ module.exports = class CommandProcessor extends EventEmitter
   Gets the trigger for the given role
   @param  [object]  args  The command args
   ###
-  __getTriggerForRole: (args) ->
-    roleName = args.roles[0]
-    Roles.find(roleName)
-      .then ( (role) =>
-        hasTrigger = role.trigger?
-        if hasTrigger
-          @_success "Trigger for \"#{role.name}\" is \"#{role.trigger}\""
-        else
-          @_success "\"#{role.name}\" has no trigger associated to it" ),(
-      (err) =>
-        @_fail "No such role \"#{roleName}\"" )
+  __getTriggersForRoles: (args) ->
+    d = Q.defer()
+    roles = args.roles
+    responses = []
+    formatMsg = (role) =>
+      if role.trigger?
+        return "Trigger for \"#{role.name}\" is \"#{role.trigger}\""
+      else
+        return "\"#{role.name}\" has no trigger associated to it"
+    while roles.length > 0
+      do (roles) =>
+        roleName = roles.shift()
+        last = roles.length is 0
+        Roles.find(roleName)
+        .then ((role) =>
+                responses.push formatMsg role
+                d.resolve [@_success, responses.join ', '] if last),
+              ((err)  => d.resolve [@_fail, "No such role \"#{roleName}\""] )
+    d.promise.spread (func, msg) =>
+      func msg
+
+
   ###
   Gets all triggers
   ###

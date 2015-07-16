@@ -35,7 +35,7 @@ module.exports = class Roles
   @find: (name) ->
     d = Q.defer()
     RolesDatastore.findOne { name: name }, (err, role) ->
-      return d.reject unless role?
+      return d.reject() unless role?
       d.resolve role
     d.promise
   ###

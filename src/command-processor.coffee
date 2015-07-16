@@ -4,6 +4,7 @@ Logs            = require './logs'
 {EventEmitter}  = require 'events'
 _               = require 'underscore'
 DataServer      = require './data-server'
+Q               = require 'q'
 
 ###
 This class is responsible for handling bot admin commands
@@ -13,9 +14,9 @@ module.exports = class CommandProcessor extends EventEmitter
   RegExp's for the kinds of parameters accepted in the processor
   ###
   PARAMS =
-    USER: /<@([A-Z0-9]+)>/g                           # A slack user
-    ROLE: /(?:(?:["“'‘])([A-Z\_\s]+)(?:["”'’]))/g     # A role (wrapped in quotes)
-    TRIGGER: /(?:(?:["“'‘])([A-Z\_\s]+)(?:["”'’]))/g  # A trigger (wrapped in quotes)
+    USER: /<@([A-Z0-9]+)>/g                               # A slack user
+    ROLE: /(?:(?:["“'‘])([A-Z\_\s\-\d]+)(?:["”'’]))/g     # A role (wrapped in quotes)
+    TRIGGER: /(?:(?:["“'‘])([A-Z\_\-\s\d]+)(?:["”'’]))/g  # A trigger (wrapped in quotes)
 
   ###
   Command replacement matches. Plurals must come first such that
@@ -39,15 +40,15 @@ module.exports = class CommandProcessor extends EventEmitter
     'ASSIGN [USER] ROLE [ROLE]':
       description:  'Assigns the provided user the given role'
       func:         'assignUserRole'
-    'ADD ROLE [ROLES]':
-      description:  'Makes me aware of a new role'
-      func:         'addRole'
-    'DROP ROLE [ROLES]':
+    'ADD ROLES? [ROLES]':
+      description:  'Makes me aware of a new role(s)'
+      func:         'addRoles'
+    'DROP ROLES? [ROLES]':
       description:  'Drops a role(s) that I currently know of. \
                      Warning: any user that has this role will be stripped of that role.'
-      func:         'dropRole'
-    'GET ROLE FOR [USERS]':
-      description:  'Gets the role for the given user'
+      func:         'dropRoles'
+    'GET ROLES? FOR [USERS]':
+      description:  'Gets the role(s) for the given user'
       func:         'getRolesForUsers'
     'GET ALL ROLES':
       description:  'Gets every role that I know about'
@@ -84,25 +85,44 @@ module.exports = class CommandProcessor extends EventEmitter
     userId  = args.users[0]
     role    = args.roles[0]
     Users.assignRole(userId, role)
-      .then (success).then ((success) => @_success success), ((err) => @_fail err)
+    .then ((success)  => @_success success),
+          ((err)      => @_fail err)
   ###
   Adds a new role
   @param  [object]  args  The command args
   ###
-  __addRole: (args) ->
+  __addRoles: (args) ->
+    d = Q.defer()
+    responses = []
     roles = args.roles
     while roles.length > 0
-      role = roles.shift()
-      Roles.add(role).then ((success) => @_success success), ((err) => @_fail err)
+      do (roles) =>
+        role = roles.shift()
+        last = roles.length is 0
+        console.log 1
+        Roles.add(role)
+        .then ((success)  => responses.push success; d.resolve [@_success, responses.join ', '] if last),
+              ((err)      => d.resolve [@_fail, err])
+    d.promise.spread (func, msg) =>
+      console.log 2, func, msg
+      func msg
   ###
   Drops an existing role
   @param  [object]  args  The command args
   ###
-  __dropRole: (args) ->
+  __dropRoles: (args) ->
+    d = Q.defer()
+    responses = []
     roles = args.roles
     while roles.length > 0
-      role = roles.shift()
-      Roles.drop(role).then ((success) => @_success success), ((err) => @_fail err)
+      do (roles) =>
+        role = roles.shift()
+        last = roles.length is 0
+        Roles.drop(role)
+        .then ((success)  => responses.push success; d.resolve [@_success, responses.join ', '] if last),
+              ((err)      => d.resolve [@_fail, err])
+    d.promise.spread (func, msg) =>
+      func msg
   ###
   Gets all roles
   ###
@@ -116,19 +136,26 @@ module.exports = class CommandProcessor extends EventEmitter
   @param  [object]  args  The command args
   ###
   __getRolesForUsers: (args) ->
+    d = Q.defer()
+    responses = []
     users = args.users
+    formatMsg = (user) =>
+      if user.role?
+        return "Role for #{user.profile.real_name} is \"#{user.role}\""
+      else
+        return "#{user.profile.real_name} is not yet assigned a role"
     while users.length > 0
-      userId = users.shift()
-      Users.find(userId)
+      do (users) =>
+        userId = users.shift()
+        last   = users.length is 0
+        Users.find(userId)
         .then ((user) =>
-          hasRole = user.role?
-          if hasRole
-            @_success "Role for #{user.profile.real_name} is \"#{user.role}\""
-          else
-            @_success "#{user.profile.real_name} is not yet assigned a role"),(
-        (err) =>
-          @_fail "No such user found"
-        )
+                responses.push formatMsg user
+                d.resolve [@_success, responses.join ', '] if last),
+              ((err)  => d.resolve [@_fail, "No such user found"] )
+    d.promise.spread (func, msg) =>
+      func msg
+
   ###
   Gets the logs for the given users
   @param  [object]  args  The command args
@@ -193,7 +220,8 @@ module.exports = class CommandProcessor extends EventEmitter
   __getHelp: ->
     string = "I understand all of these commands...\n"
     for command, commandData of COMMANDS
-      string += "`#{command}`\n_#{commandData.description}_\n\n"
+      commandStr = command.replace "S?", "(S)"
+      string += "`#{commandStr}`\n_#{commandData.description}_\n\n"
     @_success string
 
   ###
@@ -232,6 +260,7 @@ module.exports = class CommandProcessor extends EventEmitter
   ###
   _match: (input, command) =>
     matches = input.match(@_regExpForCommand command)
+    console.log @_regExpForCommand command
     matches?.length > 0
 
   ###

@@ -95,6 +95,7 @@ module.exports = class LogBot extends EventEmitter
   @param  [object]  user    The slack user object
   ###
   _handleDM: (message, user) =>
+    return unless message? or user?
     # Is a DM from an Admin and not awaiting a response for that user?
     if user.is_admin and not @_awaitingResponse[user.id]
       # Create a new command processor to handle this

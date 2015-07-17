@@ -8,8 +8,23 @@ Q             = require 'q'
 The trigger manager class is responsible for managing triggers
 ###
 module.exports = class TriggerManager
+  ###
+  Defines the number of hours defined in a work day.
+  Loaded in on `loadTriggerCache` method
+  ###
+  workDay: null
+  ###
+  The triggers I know about
+  ###
+  triggers: {}
+  ###
+  Loads the trigger cache and stores information contained here
+  to be used as a one-off load process for later construction
+  of other TriggerManager instances
+  ###
   @loadTriggerCache: ->
     d = Q.defer()
+    triggerCache = {}
     throw Error "No `triggerFile` key specified in `config.json`" unless triggerFile?
     # The constructor for the trigger manager will validate the trigger file on load
     fs.readFile triggerFile, (err, data) =>
@@ -24,7 +39,7 @@ module.exports = class TriggerManager
       catch e
         throw Error "Bad JSON for triggers. Error: #{e.message}"
       # Grab out the workDay
-      Trigger.workDay = workDay = rawTriggers.workDay
+      workDay = rawTriggers.workDay
       throw Error "Key `workDay` missing in triggers.json" unless workDay?
       # Grab out each of the triggers
       triggers = rawTriggers.triggers
@@ -33,7 +48,7 @@ module.exports = class TriggerManager
       # Validate each trigger
       for triggerKey, trigger of triggers
         triggerKey = triggerKey.trim().toUpperCase();
-        throw Error "Duplicate trigger key \"#{triggerKey}\"!" if @triggerCache[triggerKey]?
+        throw Error "Duplicate trigger key \"#{triggerKey}\"!" if triggerCache[triggerKey]?
         throw Error "Trigger keys only contain alphanumeric, spaces, dashes and underscore characters (invalid key \"#{triggerKey}\")" unless /^[A-Z\_\s\-\d]+$/.test triggerKey
         # Check root level keys
         for key, type of {question: 'string', responses: 'object', conditions: 'object'}
@@ -56,26 +71,19 @@ module.exports = class TriggerManager
               throw Error "Invalid cron time for `time` conditional"
           if key is 'loggedInToday'
             throw Error "Conditional `loggedInToday` must be boolean" if typeof value isnt 'boolean'
-        @triggerCache[triggerKey] =
+        triggerCache[triggerKey] =
           triggerKey: triggerKey
           question:   question
           helpText:   helpText
           responses:  responses
           conditions: conditions
-      d.resolve @triggerCache
+      d.resolve [triggerCache, workDay]
     d.promise
-  ###
-  TriggerCache caches the triggers loaded
-  ###
-  @triggerCache: {}
-  ###
-  The triggers I know about
-  ###
-  triggers: {}
   ###
   @param  [LogBot]  logBot  The log bot that created the trigger manager
   ###
   constructor: (logBot) ->
-    TriggerManager.loadTriggerCache().then =>
-      for triggerKey, cache of TriggerManager.triggerCache
+    TriggerManager.loadTriggerCache().spread (triggerCache, workDay) =>
+      @workDay = workDay
+      for triggerKey, cache of triggerCache
         @triggers[triggerKey] = new Trigger logBot, cache.triggerKey, cache.question, cache.helpText, cache.responses, cache.conditions

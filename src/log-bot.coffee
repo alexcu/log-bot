@@ -107,6 +107,7 @@ module.exports = class LogBot extends EventEmitter
       @emit 'adminCommandReceived', message.text, user
     # Awaiting a response? Emit a DM
     else if @_awaitingResponse[user.id]
+      console.log user.id, message.text
       @emit 'dmResponseReceived', message, user
     else
       # Not awaiting a response and received a DM? Just emit it

@@ -111,4 +111,3 @@ module.exports = class LogBot extends EventEmitter
     else
       # Not awaiting a response and received a DM? Just emit it
       @emit 'dmReceived', message, user
-      @sendDM message, user.id

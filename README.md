@@ -5,7 +5,7 @@ LogBot is a [Slack](http://slack.com/) bot integration designed to effortlessly 
 - [About LogBot](#about-logbot)
 - [Getting Started](#getting-started)
   - [Installing](#installing)
-  - [Setting `config.json`](#creating-config.json)
+  - [Setting `config.json`](#creating-configjson)
   - [Creating triggers](#creating-triggers)
 - [Using LogBot](#using-logbot)
   - [As an administrator](#as-an-administrator)
@@ -51,7 +51,7 @@ A configuration file for LogBot settings is needed, `config.json`. Place this fi
 - `datastoreDirectory` A relative or absolute path for where LogBot can store data.
 - `server` The server `ip` and `port` which LogBot hosts its data server from the machine it is run on.
 
-### [Creating triggers](id:triggers)
+### Creating triggers
 
 A trigger configuration describes possible triggers. The JSON file can be commented with `//` comments inside this JSON file to help keep your file organised.
 
@@ -66,10 +66,10 @@ Each key inside the `triggers` object is the unique name of that trigger. A trig
 
 - `question` The initial question to prompt to the user when the trigger is fired.
 - `helpText` An optional help text, usually to provide help on which answers are acceptable for the question asked
-- `responses` An object containing response/action [bindings](#response-actions) (see below)
-- `conditions` [Conditions](#conditions) which the fire trigger
+- `responses` An object containing response/action [bindings](#responseactions-bindings) (see below)
+- `conditions` [Conditions](#trigger-conditions) which the fire trigger
 
-#### [Responses/Actions bindings](id:response-actions)
+#### Responses/Actions bindings
 
 Inside the `responses` object should contain key/value bindings to **regular expressions** (key) and the appropriate **action** (value) LogBot takes when the regular expression is matched against user responses.
 
@@ -89,7 +89,7 @@ If the action is a **string**, it should represent either a mathematical express
 If the action is an **object**, then a follow-up question is asked, each with its own `question`, `helpText` and `responses` keys/values. Note that LogBot will keep asking questions until the question is resolved to a string-based action (i.e., to a concrete hour duration it can use to log the hours worked).
 
 
-#### [Trigger conditions](id:conditions)
+#### Trigger conditions
 
 At present, two conditions are currently supported:
 

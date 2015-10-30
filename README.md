@@ -148,6 +148,7 @@ To extend the code base, use the following steps:
 ## TODOs
 
 - Prioritise environment variables over `config.json`
+- Add some screenshots or videos of the bot in use
 
 ## Licence
 

@@ -15,7 +15,7 @@ module.exports = class Trigger
   Fires this trigger
   ###
   fire: =>
-    console.log "Firing trigger #{@key}..., #{Trigger.workDay}"
+    console.info "Firing trigger #{@key}..., #{Trigger.workDay}"
     # Find all applicable roles which this trigger will run for
     Roles.all().then (roles) =>
       applicableRoles = (role for role in roles when role.trigger is @key)
@@ -34,7 +34,7 @@ module.exports = class Trigger
                 lastOnline = slackUser.last_online
                 lastOnlineToday = moment.unix(lastOnline).isSame(moment(), 'day');
                 # Only perform the trigger if lastOnlineToday
-                console.log "T: Trigger fired for #{@logBot.slack.getUserByID(user.id).profile.real_name}"
+                console.info "T: Trigger fired for #{@logBot.slack.getUserByID(user.id).profile.real_name}"
                 new TriggerFirer @logBot, user.id, @question, @responseActions, {helpText: @helpText}, true if lastOnlineToday
             else
               new TriggerFirer @logBot, user.id, @question, @responseActions, {helpText: @helpText}, true

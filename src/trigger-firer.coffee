@@ -38,15 +38,12 @@ module.exports = class TriggerFirer
     f = @firers[user.id]
     # Block not created? Create it
     f.block = {} unless f.block?
-    # Only parse expected user responses
-    console.log "Got a message from #{user.profile.real_name} (#{user.id}) => #{message.text} (expected #{f.userId} -> #{if user.id isnt f.userId then 'skipping' else 'continuing'} -> expect answer", f.responseActions
     # Not the right user or user already in block
     return if user.id isnt f.userId or f.block[f.userId]?
     # Make the resolution block
     f.block[f.userId] = Q.defer() unless f.block[f.userId]?
     @nextQuestions[f.userId] = [] unless @nextQuestions[f.userId]?
     # Match every possible response
-    console.log "THERE ARE", matches?.length, "MATCHES"
     for regEx, action of f.responseActions
       if matches = message.text.match RegExp regEx, 'g'
         # Repeat for each match found
@@ -54,12 +51,11 @@ module.exports = class TriggerFirer
           do (match, index) =>
             # If action is the logging period?
             if typeof action is 'string'
-              # If we have encountered a $! action, then restart
-              # from initial questions and responses
+              # If we have encountered a $! action, then resolve this question
+              # as the current line of questioning is cancelled
               if action is "$!"
-                @nextQuestions[f.userId].push [ f.logBot, f.userId, f.question, f.responseActions, { helpText: f.helpText } ]
-                console.log '@1 - restart initial questions'
-                f.block[f.userId].resolve('restart initial questions')
+                f.block[f.userId].resolve()
+              # Numeric answer
               else
                 # Need to replace a workDay with the actual value it has as defined
                 # by the trigger manager that holds this trigger (i.e., by LogBot)
@@ -73,41 +69,42 @@ module.exports = class TriggerFirer
                 # Only clear the timeout when the question is resolved
                 clearTimeout @timeouts[f.userId]
                 f.logBot.sendDM "Thank you. I have logged *#{hours.toFixed(2)} hours* for #{if project? then project else "your work"}. :simple_smile:", f.userId
-                console.log '@2 - resolve'
-                f.block[f.userId].resolve('it was logged')
+                f.block[f.userId].resolve()
             # If action is a second set of questions
             else if typeof action is 'object'
               # Replace $1 in question with the match
               toAsk = action.question.replace /\$1/, match
               # See if there was a dollar one match, and if so we will provide a previousMatch
               previousMatch = if action.question.match(/\$1/)? then match
-              console.log '>>>>>>>>>>>>>', toAsk, @nextQuestions[f.userId]
               @nextQuestions[f.userId].push [ f.logBot, f.userId, toAsk, action.responses, { previousMatch: previousMatch, helpText: action.helpText } ]
-              console.log '@3 - second set of questioning'
-              f.block[f.userId].resolve('second set of questioning started')
-        break
+              f.block[f.userId].resolve()
       else
-        console.log "didnt match regex", regEx
+        # If this regEx is the last of the response actions and there
+        # were no matches? We must've received a bad answer
         if regEx is _.last _.keys f.responseActions
-          console.log ('out of options')
-          f.block[f.userId].reject('didnt match')
-    # Only handle reject
-    f.block[f.userId]?.promise.then ( (reason) =>
-      console.log f.userId, 'are there more questions?', @nextQuestions[f.userId].length > 0
+          f.block[f.userId].reject()
+    # Handle the block for the user
+    f.block[f.userId]?.promise.then ( =>
+      # If there are more questions to ask this user?
       if @nextQuestions[f.userId].length > 0
+        # Pop the arguments for the next question
         args = @nextQuestions[f.userId].shift()
-        console.log('xxx')
+        # Ask it on the next timeout so that we don't immediately ask it
+        # If we don't set it on a timeout then the bot will use the answer
+        # that triggered this promise to be the answer for the new trigger
+        # created below
         setTimeout ->
-          console.log @nextQuestions?[f.userId]
           TriggerFirer.firers[f.userId] = new TriggerFirer args[0], args[1], args[2], args[3], args[4]
+      # No more questions?
       else
-        # No more questions? Remoe it
+        # We can delete this
         delete @firers[user.id]
+      # Regardless, delete the promise block; either we're done or the new
+      # trigger created in the next timeout will handle the next question
       delete f.block[f.userId]
-      console.log f.userId, 'was resolved because', reason ), ( (reason) =>
-        console.log f.block[f.userId].promise
+    ), ( =>
+        # Rejected!
         f.logBot.sendDM "Sorry I don't understand", f.userId
-        console.log f.userId, 'was rejected because', reason
         TriggerFirer.firers[f.userId] = new TriggerFirer f.logBot, f.userId, f.question, f.responseActions, if f.extraParams? then f.extraParams )
 
   ###
@@ -135,11 +132,9 @@ module.exports = class TriggerFirer
     # Send the question (with helpText if applicable)
     messageToSend = if @extraParams?.helpText? then "#{@question}\n>#{@extraParams.helpText}" else @question
     @logBot.sendDM messageToSend, @userId, true
-    console.log "TF: Trigger fired for #{@logBot.slack.getUserByID(@userId).profile.real_name}"
     # Setup the expiration handler
     @_applyExpirationHandler()
     # Add a handler for this user on a DM response which is received
-    console.log TriggerFirer.nextQuestions[@userId], messageToSend, TriggerFirer.firers[@userId]?
     unless TriggerFirer.firers[@userId]?
       # Handle the DM once and once only for each user!
       TriggerFirer.firers[@userId] = @

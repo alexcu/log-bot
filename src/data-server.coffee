@@ -28,7 +28,7 @@ module.exports = class DataServer
   The actual data server
   ###
   @_server: @_express.listen server.port, =>
-    console.log "Data server is up at http://%s:%s/", server.ip, server.port
+    console.info "Data server is up at http://%s:%s/", server.ip, server.port
 
   ###
   The urls hash stores data at the given /data/:id endpoint

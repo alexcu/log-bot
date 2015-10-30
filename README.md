@@ -114,6 +114,7 @@ Use the `HELP` command to see what LogBot knows.
 
 - `GET ALL TRIGGERS` Get every trigger that is available
 - `GET TRIGGER FOR "Intern Staff"` Will return the triggers associated to the role `Intern Staff`
+- `FIRE ALL TRIGGERS NOW` Will fire every trigger registered right now, regardless of when they're _supposed_ to be triggered
 
 ## As a non-administrator
 

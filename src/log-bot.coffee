@@ -81,7 +81,8 @@ module.exports = class LogBot extends EventEmitter
     dm = (dm for id, dm of @slack.dms when dm.user is userId)[0]
     # Open a DM if it doesn't yet exist
     unless dm?
-      @slack.openDM userId, (dm) ->
+      @slack.openDM userId, (dm) =>
+        console.log @slack
         dm = @slack.dms[dm.channel.id]
         dm.send message
     else
@@ -107,7 +108,6 @@ module.exports = class LogBot extends EventEmitter
       @emit 'adminCommandReceived', message.text, user
     # Awaiting a response? Emit a DM
     else if @_awaitingResponse[user.id]
-      console.log user.id, message.text
       @emit 'dmResponseReceived', message, user
     else
       # Not awaiting a response and received a DM? Just emit it

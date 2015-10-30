@@ -2,6 +2,8 @@ Logs    = require './logs'
 moment  = require 'moment'
 Trigger = require './trigger'
 util    = require 'util'
+Q       = require 'q'
+_       = require 'underscore'
 module.exports = class TriggerFirer
   ###
   Timeouts for responding to triggers; hash contains the userId as key
@@ -13,6 +15,11 @@ module.exports = class TriggerFirer
   Firers for each user as a key/value hash
   ###
   @firers: {}
+
+  ###
+  Next questions to ask each user
+  ###
+  @nextQuestions: {}
 
   ###
   We need a semaphore to block the bot from asking multiple questions at once
@@ -29,24 +36,30 @@ module.exports = class TriggerFirer
   @_responseActionHandler: (message, user) =>
     # Alias here so it takes up less code
     f = @firers[user.id]
+    # Block not created? Create it
+    f.block = {} unless f.block?
     # Only parse expected user responses
-    console.log "Got a message from #{user.profile.real_name} (#{user.id}) => #{message.text} (expected #{f.userId})"
-    return if user.id isnt f.userId
+    console.log "Got a message from #{user.profile.real_name} (#{user.id}) => #{message.text} (expected #{f.userId} -> #{if user.id isnt f.userId then 'skipping' else 'continuing'} -> expect answer", f.responseActions
+    # Not the right user or user already in block
+    return if user.id isnt f.userId or f.block[f.userId]?
+    # Make the resolution block
+    f.block[f.userId] = Q.defer() unless f.block[f.userId]?
+    @nextQuestions[f.userId] = [] unless @nextQuestions[f.userId]?
+    # Match every possible response
+    console.log "THERE ARE", matches?.length, "MATCHES"
     for regEx, action of f.responseActions
-      regEx = RegExp regEx, 'g'
-      if matches = message.text.match regEx
-        # Block not created? Create it
-        f.block = require('semaphore')(1) unless f.block?
-        # Repeat for each match
+      if matches = message.text.match RegExp regEx, 'g'
+        # Repeat for each match found
         for match, index in matches
-          match = match.trim()
           do (match, index) =>
             # If action is the logging period?
             if typeof action is 'string'
               # If we have encountered a $! action, then restart
               # from initial questions and responses
               if action is "$!"
-                TriggerFirer.firers[f.userId] = new TriggerFirer f.logBot, f.userId, f.question, f.responseActions, {helpText: f.helpText}
+                @nextQuestions[f.userId].push [ f.logBot, f.userId, f.question, f.responseActions, { helpText: f.helpText } ]
+                console.log '@1 - restart initial questions'
+                f.block[f.userId].resolve('restart initial questions')
               else
                 # Need to replace a workDay with the actual value it has as defined
                 # by the trigger manager that holds this trigger (i.e., by LogBot)
@@ -60,21 +73,42 @@ module.exports = class TriggerFirer
                 # Only clear the timeout when the question is resolved
                 clearTimeout @timeouts[f.userId]
                 f.logBot.sendDM "Thank you. I have logged *#{hours.toFixed(2)} hours* for #{if project? then project else "your work"}. :simple_smile:", f.userId
-              # Leave a token to unblock for the next question to be asked,
-              # granted it isn't the last question
-              f.block[f.userId].leave() if f.block.current isnt 0
+                console.log '@2 - resolve'
+                f.block[f.userId].resolve('it was logged')
             # If action is a second set of questions
             else if typeof action is 'object'
-              # Take acquisition of the asking block
-              f.block.take =>
-                # Replace $1 in question with the match
-                toAsk = action.question.replace /\$1/, match
-                # See if there was a dollar one match, and if so we will provide a previousMatch
-                previousMatch = if action.question.match(/\$1/)? then match
-                TriggerFirer.firers[f.userId] = new TriggerFirer f.logBot, f.userId, toAsk, action.responses, { previousMatch: previousMatch, helpText: action.helpText }
-    f.logBot.sendDM "Sorry I don't understand", f.userId
-    console.log "xxxxxxx"
-    TriggerFirer.firers[f.userId] = new TriggerFirer f.logBot, f.userId, f.question, f.responseActions, if f.extraParams? then f.extraParams
+              # Replace $1 in question with the match
+              toAsk = action.question.replace /\$1/, match
+              # See if there was a dollar one match, and if so we will provide a previousMatch
+              previousMatch = if action.question.match(/\$1/)? then match
+              console.log '>>>>>>>>>>>>>', toAsk, @nextQuestions[f.userId]
+              @nextQuestions[f.userId].push [ f.logBot, f.userId, toAsk, action.responses, { previousMatch: previousMatch, helpText: action.helpText } ]
+              console.log '@3 - second set of questioning'
+              f.block[f.userId].resolve('second set of questioning started')
+        break
+      else
+        console.log "didnt match regex", regEx
+        if regEx is _.last _.keys f.responseActions
+          console.log ('out of options')
+          f.block[f.userId].reject('didnt match')
+    # Only handle reject
+    f.block[f.userId]?.promise.then ( (reason) =>
+      console.log f.userId, 'are there more questions?', @nextQuestions[f.userId].length > 0
+      if @nextQuestions[f.userId].length > 0
+        args = @nextQuestions[f.userId].shift()
+        console.log('xxx')
+        setTimeout ->
+          console.log @nextQuestions?[f.userId]
+          TriggerFirer.firers[f.userId] = new TriggerFirer args[0], args[1], args[2], args[3], args[4]
+      else
+        # No more questions? Remoe it
+        delete @firers[user.id]
+      delete f.block[f.userId]
+      console.log f.userId, 'was resolved because', reason ), ( (reason) =>
+        console.log f.block[f.userId].promise
+        f.logBot.sendDM "Sorry I don't understand", f.userId
+        console.log f.userId, 'was rejected because', reason
+        TriggerFirer.firers[f.userId] = new TriggerFirer f.logBot, f.userId, f.question, f.responseActions, if f.extraParams? then f.extraParams )
 
   ###
   Applies the trigger expiration
@@ -105,7 +139,7 @@ module.exports = class TriggerFirer
     # Setup the expiration handler
     @_applyExpirationHandler()
     # Add a handler for this user on a DM response which is received
-    console.log 3
+    console.log TriggerFirer.nextQuestions[@userId], messageToSend, TriggerFirer.firers[@userId]?
     unless TriggerFirer.firers[@userId]?
       # Handle the DM once and once only for each user!
       TriggerFirer.firers[@userId] = @

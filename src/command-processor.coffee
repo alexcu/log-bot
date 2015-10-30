@@ -73,6 +73,9 @@ module.exports = class CommandProcessor extends EventEmitter
     'GET TRIGGERS? FOR [ROLES]':
       description:  'Gets the trigger(s) associated to the given role(s)'
       func:         'getTriggersForRoles'
+    'FIRE ALL TRIGGERS NOW':
+      description:  'Forces all triggers to fire right now'
+      func:         'forceAllTriggers'
     # Help
     'HELP':
       description:  'Shows this help menu'
@@ -217,7 +220,14 @@ module.exports = class CommandProcessor extends EventEmitter
     d.promise.spread (func, msg) =>
       func msg
 
-
+  ###
+  Forces all triggers to fire right now
+  ###
+  __forceAllTriggers: ->
+    triggers = (trigger for key, trigger of @_logBot.triggerManager.triggers)
+    return @_success "There are no triggers I know of" if triggers.length is 0
+    trigger.fire() for trigger in triggers
+    @_success "Fired #{triggers.length} trigger(s)"
   ###
   Gets all triggers
   ###

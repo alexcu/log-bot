@@ -30,10 +30,10 @@ module.exports = class LogBot extends EventEmitter
     @slack.login()
     # Handle slack errors
     @slack.on 'error', (err) =>
-      console.log "An error has occurred : #{JSON.stringify err}"
+      console.error "An error has occurred : #{JSON.stringify err}"
     # Once initialised, begin listening for messages
     @slack.on 'open', =>
-      console.log "#{@slack.self.name} has connected"
+      console.info "#{@slack.self.name} has connected"
       # Update it anyway on creation of the bot to get first-time users
       @_updateUsers()
     # Checking for messages
@@ -81,7 +81,7 @@ module.exports = class LogBot extends EventEmitter
     dm = (dm for id, dm of @slack.dms when dm.user is userId)[0]
     # Open a DM if it doesn't yet exist
     unless dm?
-      @slack.openDM userId, (dm) ->
+      @slack.openDM userId, (dm) =>
         dm = @slack.dms[dm.channel.id]
         dm.send message
     else

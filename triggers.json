@@ -61,8 +61,9 @@
             "^[Nn]": "$!"
           }
         },
-        // Multiple projects responded (i.e., comma-separated...)
-        "[^,]+": {
+        // Multiple projects responded (i.e., comma-separated but use a
+        // positive lookahead to skip the actual ',')
+        "[^,]+(?=,{1})?": {
           // When there are multiple matches in the regular expression, as is the case
           // in the regular expression /[^,]+/g above, AND the next question to ask
           // will contain a $1, then multiple questions/actions will be asked/resolved

@@ -1,8 +1,8 @@
 {
   "name": "log-bot",
+  "version": "1.0.0",
   "description": "A slack integration bot for logging project hours",
   "author": "Alex Cummaudo",
-  "private": true,
   "dependencies": {
     "body-parser": "^1.13.1",
     "coffee-script": "1.7.1",
